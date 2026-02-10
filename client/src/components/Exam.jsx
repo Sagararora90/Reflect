@@ -135,11 +135,31 @@ const Exam = () => {
           
           socket.on('remote-command', ({ action, payload }) => {
               if (action === 'terminate') {
-                  alert("Your exam has been ended by the proctor.");
-                  confirmSubmit();
+                  alert("Your exam has been ENDED by the proctor.");
+                  const snap = captureSnapshot();
+                  dispatch({ 
+                      type: 'ADD_WARNING', 
+                      payload: { 
+                          reason: 'Exam Terminated by Proctor', 
+                          time: new Date().toLocaleTimeString(), 
+                          timestamp: new Date(), 
+                          evidence: snap.webcam 
+                      } 
+                  });
+                  // Allow state to update before submitting
+                  setTimeout(confirmSubmit, 500); 
               }
               if (action === 'warn') {
-                  dispatch({ type: 'ADD_WARNING', payload: { reason: 'Proctor Warning: ' + payload, time: new Date().toLocaleTimeString() } });
+                  const msg = 'Proctor Warning: ' + payload;
+                  alert(msg); // Show alert to student
+                  dispatch({ 
+                      type: 'ADD_WARNING', 
+                      payload: { 
+                          reason: msg, 
+                          time: new Date().toLocaleTimeString(), 
+                          timestamp: new Date() 
+                      } 
+                  });
               }
           });
       }

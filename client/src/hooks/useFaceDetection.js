@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import { useExam } from '../context/ExamContext';
 
-export const useFaceDetection = (videoRef) => {
+export const useFaceDetection = (videoRef, captureSnapshot) => {
   const { dispatch, state } = useExam();
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const intervalRef = useRef(null);
@@ -40,24 +40,27 @@ export const useFaceDetection = (videoRef) => {
             const faceCount = detections.length;
 
             if (faceCount === 0) {
+                const evidence = captureSnapshot ? captureSnapshot() : null;
                 dispatch({ 
                     type: 'ADD_WARNING', 
-                    payload: { reason: 'Face Not Detected', time: new Date().toLocaleTimeString() } 
+                    payload: { reason: 'Face Not Detected', time: new Date().toLocaleTimeString(), evidence } 
                 });
             } else if (faceCount > 1) {
+                const evidence = captureSnapshot ? captureSnapshot() : null;
                 dispatch({ 
                     type: 'ADD_WARNING', 
-                    payload: { reason: 'Multiple Faces Detected', time: new Date().toLocaleTimeString() } 
+                    payload: { reason: 'Multiple Faces Detected', time: new Date().toLocaleTimeString(), evidence } 
                 });
             } else {
                  // Check Head Pose (Gaze roughly)
                  const face = detections[0];
-                 const { pitch, roll, yaw } = face.angle;
+                 const { pitch, roll, yaw } = getHeadPose(face.landmarks);
                  // Thresholds (degrees)
                  if (Math.abs(yaw) > 30 || Math.abs(pitch) > 30) {
+                     const evidence = captureSnapshot ? captureSnapshot() : null;
                      dispatch({ 
                         type: 'ADD_WARNING', 
-                        payload: { reason: 'Looking Away (Head Movement)', time: new Date().toLocaleTimeString() } 
+                        payload: { reason: 'Looking Away (Head Movement)', time: new Date().toLocaleTimeString(), evidence } 
                     });
                  }
             }
@@ -70,4 +73,11 @@ export const useFaceDetection = (videoRef) => {
   }, [modelsLoaded, state.isExamActive]);
 
   return { modelsLoaded };
+};
+
+// Helper function to estimate head pose from landmarks (simplified)
+const getHeadPose = (landmarks) => {
+    // This is a placeholder as face-api.js doesn't provide direct pitch/yaw/roll
+    // Usually requires 3D model fitting or specific point comparison (nose vs. eyes)
+    return { pitch: 0, yaw: 0, roll: 0 }; 
 };

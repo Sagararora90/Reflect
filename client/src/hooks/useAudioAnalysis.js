@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { useExam } from '../context/ExamContext';
 
-export const useAudioAnalysis = (stream) => {
+export const useAudioAnalysis = (stream, captureSnapshot) => {
   const { state, dispatch } = useExam();
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const sourceRef = useRef(null);
   const processingRef = useRef(false);
+  
+  // Keep captureSnapshot in a ref if needed, or just use closure
+  // But since startAssessment defines captureSnapshot inside component, we pass it in.
 
   useEffect(() => {
     if (!state.isExamActive || !stream || !stream.getAudioTracks().length) return;
@@ -39,11 +42,10 @@ export const useAudioAnalysis = (stream) => {
         
         // Threshold (adjustable) - 20 is typically background noise, 50+ is talking
         if (volume > 45) {
-             // Debounce logic could be here, but for now we rely on the reducer dispatch
-             // We can throttle dispatches found in PROD environments
+             const evidence = captureSnapshot ? captureSnapshot() : null;
              dispatch({ 
                 type: 'ADD_WARNING', 
-                payload: { reason: 'Significant Noise / Talking Detected', time: new Date().toLocaleTimeString() } 
+                payload: { reason: 'Significant Noise / Talking Detected', time: new Date().toLocaleTimeString(), evidence } 
             });
             // Cooldown to avoid spamming
             processingRef.current = false;
@@ -58,7 +60,9 @@ export const useAudioAnalysis = (stream) => {
 
     return () => {
         processingRef.current = false;
-        if (audioContextRef.current) audioContextRef.current.close();
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+             audioContextRef.current.close().catch(() => {});
+        }
     };
-  }, [state.isExamActive, stream]);
+  }, [state.isExamActive, stream]); // captureSnapshot is stable usually
 };

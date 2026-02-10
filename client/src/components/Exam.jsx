@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import { useAuth } from '../context/AuthContext';
@@ -93,23 +93,7 @@ const Exam = () => {
       let logInterval;
       if (state.isExamActive && user?._id && state.examId) {
         logInterval = setInterval(() => {
-            const snap = { webcam: null, screen: null };
-            try {
-                if (videoRef.current && videoRef.current.readyState >= 2) {
-                    const c = document.createElement('canvas');
-                    c.width = 320; c.height = 240;
-                    c.getContext('2d').drawImage(videoRef.current, 0, 0, 320, 240);
-                    snap.webcam = c.toDataURL('image/jpeg', 0.6);
-                }
-            } catch(e) {}
-            try {
-                if (screenRef.current && screenRef.current.readyState >= 2) {
-                    const c = document.createElement('canvas');
-                    c.width = 480; c.height = 270;
-                    c.getContext('2d').drawImage(screenRef.current, 0, 0, 480, 270);
-                    snap.screen = c.toDataURL('image/jpeg', 0.6);
-                }
-            } catch(e) {}
+            const snap = captureSnapshot(); // Use the robust capture function
             socket.emit('student-pulse', {
                 examId: state.examId,
                 studentId: user._id,
@@ -134,11 +118,11 @@ const Exam = () => {
           alert("Fullscreen mode is required to start the exam.");
       }
   };
-  useAudioAnalysis(state.streams.webcam);
+  useAudioAnalysis(state.streams.webcam, captureSnapshot);
   useDevTools();
   const lastGoodSnap = useRef({ webcam: null, screen: null });
 
-  const captureSnapshot = () => {
+  const captureSnapshot = useCallback(() => {
       const snap = { webcam: null, screen: null };
       try {
           // readyState >= 2 means HAVE_CURRENT_DATA - enough for a screenshot
@@ -170,7 +154,7 @@ const Exam = () => {
           snap.screen = lastGoodSnap.current.screen;
       }
       return snap;
-  };
+  }, []);
 
   // Pass captureSnapshot to proctoring hooks so they can grab evidence on violation
   useProctoring({
@@ -203,7 +187,7 @@ const Exam = () => {
       }
   });
   
-  const { modelsLoaded } = useFaceDetection(videoRef);
+  const { modelsLoaded } = useFaceDetection(videoRef, captureSnapshot);
 
   useEffect(() => {
     // dispatch({ type: 'START_EXAM' }); // Moved to startAssessment

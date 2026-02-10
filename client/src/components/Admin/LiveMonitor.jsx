@@ -23,6 +23,7 @@ const LiveMonitor = () => {
         socket.emit('join-monitor', examId);
 
         socket.on('monitor-update', (data) => {
+            if (!data) return; 
             console.log("Monitor update received:", data.studentId);
             setStudents(prev => ({
                 ...prev,

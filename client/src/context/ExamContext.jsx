@@ -46,6 +46,15 @@ const examReducer = (state, action) => {
           logs: []
       };
       break;
+    case 'RESUME_EXAM':
+      if (state.examStatus === 'active') return state;
+      newState = {
+          ...state,
+          isExamActive: true,
+          examStatus: 'active'
+          // Do NOT reset warnings or logs
+      };
+      break;
     case 'END_EXAM':
       newState = { ...state, isExamActive: false, examStatus: 'terminated' };
       break;

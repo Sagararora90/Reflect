@@ -83,6 +83,15 @@ const Exam = () => {
       return snap;
   }, []);
 
+  /* ── Resume Logic ── */
+  useEffect(() => {
+    // If we have exam data but inactive state (refresh), resume.
+    if (!state.isExamActive && state.examData && state.examId) {
+        dispatch({ type: 'RESUME_EXAM' });
+        setHasStarted(true);
+    }
+  }, [state.examData, state.examId, state.isExamActive]);
+
   /* ── Countdown Timer ── */
   useEffect(() => {
       if (!hasStarted) return;
@@ -112,16 +121,17 @@ const Exam = () => {
   /* ── Socket & Proctoring ── */
   useEffect(() => {
     // Debug: Log connection attempt
+    const userId = user?._id || user?.id;
     console.log("Exam.jsx: Checking join-exam conditions", { 
         isActive: state.isExamActive, 
-        userId: user?._id, 
+        userId: userId,
         examId: state.examId,
         socketConnected: socket.connected
     });
 
-      if (state.isExamActive && user?._id && state.examId) {
+      if (state.isExamActive && userId && state.examId) {
           console.log("Exam.jsx: Joining exam room AND monitor room...");
-          socket.emit('join-exam', state.examId, user._id);
+          socket.emit('join-exam', state.examId, userId);
           
           socket.on('remote-command', ({ action, payload }) => {
               if (action === 'terminate') {
@@ -138,7 +148,8 @@ const Exam = () => {
 
   useEffect(() => {
       let logInterval;
-      if (state.isExamActive && user?._id && state.examId) {
+      const userId = user?._id || user?.id;
+      if (state.isExamActive && userId && state.examId) {
         logInterval = setInterval(() => {
             const snap = captureSnapshot(); // Use the robust capture function
             console.log("Sending student pulse for exam:", state.examId, { socketConnected: socket.connected });
@@ -147,7 +158,7 @@ const Exam = () => {
             if (socket.connected) {
                 socket.emit('student-pulse', {
                     examId: state.examId,
-                    studentId: user._id,
+                    studentId: userId,
                     name: user.name || 'Student',
                     webcam: snap.webcam,
                     screen: snap.screen,

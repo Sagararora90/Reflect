@@ -204,8 +204,8 @@ const Exam = () => {
           screenRef.current.play().catch(() => {});
       }
     };
-    setTimeout(attachStreams, 100);
-  }, []);
+    attachStreams();
+  }, [state.streams]);
 
   useEffect(() => {
       if (state.warnings >= state.maxWarnings) confirmSubmit();

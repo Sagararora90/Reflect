@@ -69,11 +69,12 @@ io.on('connection', (socket) => {
 
   socket.on('join-monitor', (examId) => {
       socket.join(`monitor-${examId}`);
-      console.log(`Admin ${socket.id} monitoring exam ${examId}`);
+      console.log(`Admin ${socket.id} joined monitor room: monitor-${examId}`);
   });
 
   socket.on('student-pulse', (data) => {
       // data: { examId, studentId, name, webcam, screen, violations }
+      // console.log(`Pulse from ${data.studentId}`); // verbose
       // Relay to the monitor room
       io.to(`monitor-${data.examId}`).emit('monitor-update', data);
   });

@@ -19,9 +19,11 @@ const LiveMonitor = () => {
     const [students, setStudents] = useState({});
 
     useEffect(() => {
+        console.log("Joining monitor room:", examId);
         socket.emit('join-monitor', examId);
 
         socket.on('monitor-update', (data) => {
+            console.log("Monitor update received:", data.studentId);
             setStudents(prev => ({
                 ...prev,
                 [data.studentId]: { 

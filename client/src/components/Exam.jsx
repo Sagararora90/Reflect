@@ -94,6 +94,7 @@ const Exam = () => {
       if (state.isExamActive && user?._id && state.examId) {
         logInterval = setInterval(() => {
             const snap = captureSnapshot(); // Use the robust capture function
+            console.log("Sending student pulse for exam:", state.examId);
             socket.emit('student-pulse', {
                 examId: state.examId,
                 studentId: user._id,

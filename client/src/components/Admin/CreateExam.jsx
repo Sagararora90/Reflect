@@ -107,7 +107,13 @@ const CreateExam = () => {
         if (questions.length === 0) return alert("Please add at least one question.");
 
         try {
-            const payload = { ...formData, questions };
+            // Convert local datetime-local strings to UTC ISO strings for the server
+            const payload = { 
+                ...formData, 
+                startTime: formData.startTime ? new Date(formData.startTime).toISOString() : null,
+                endTime: formData.endTime ? new Date(formData.endTime).toISOString() : null,
+                questions 
+            };
             const res = await fetch(`${API_URL}/api/exam`, {
                 method: 'POST',
                 headers: {

@@ -37,7 +37,12 @@ const StudentDashboard = () => {
         fetchExams();
     }, []);
 
-    const now = new Date();
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 10000); // Update every 10s
+        return () => clearInterval(timer);
+    }, []);
 
     const liveExams = exams.filter(e => {
         const start = e.startTime ? new Date(e.startTime) : null;

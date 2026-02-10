@@ -46,6 +46,42 @@ const Exam = () => {
   const duration = state.examData?.duration || 60;
   const questions = state.examData?.questions || [];
 
+  /* ── Capture Snapshot Helper (Moved Up) ── */
+  const lastGoodSnap = useRef({ webcam: null, screen: null });
+  const captureSnapshot = useCallback(() => {
+      const snap = { webcam: null, screen: null };
+      try {
+          // readyState >= 2 means HAVE_CURRENT_DATA - enough for a screenshot
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+              const canvas = document.createElement('canvas');
+              canvas.width = 640; canvas.height = 480;
+              canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+              snap.webcam = canvas.toDataURL('image/jpeg', 0.85);
+              lastGoodSnap.current.webcam = snap.webcam;
+          } else {
+              snap.webcam = lastGoodSnap.current.webcam; // Use last known good
+          }
+      } catch (e) {
+          console.warn('Webcam capture failed:', e);
+          snap.webcam = lastGoodSnap.current.webcam;
+      }
+      try {
+          if (screenRef.current && screenRef.current.readyState >= 2) {
+              const canvas = document.createElement('canvas');
+              canvas.width = 1280; canvas.height = 720;
+              canvas.getContext('2d').drawImage(screenRef.current, 0, 0, canvas.width, canvas.height);
+              snap.screen = canvas.toDataURL('image/jpeg', 0.85);
+              lastGoodSnap.current.screen = snap.screen;
+          } else {
+              snap.screen = lastGoodSnap.current.screen;
+          }
+      } catch (e) {
+          console.warn('Screen capture failed:', e);
+          snap.screen = lastGoodSnap.current.screen;
+      }
+      return snap;
+  }, []);
+
   /* ── Countdown Timer ── */
   useEffect(() => {
       if (!hasStarted) return;
@@ -121,41 +157,7 @@ const Exam = () => {
   };
   useAudioAnalysis(state.streams.webcam, captureSnapshot);
   useDevTools();
-  const lastGoodSnap = useRef({ webcam: null, screen: null });
-
-  const captureSnapshot = useCallback(() => {
-      const snap = { webcam: null, screen: null };
-      try {
-          // readyState >= 2 means HAVE_CURRENT_DATA - enough for a screenshot
-          if (videoRef.current && videoRef.current.readyState >= 2) {
-              const canvas = document.createElement('canvas');
-              canvas.width = 640; canvas.height = 480;
-              canvas.getContext('2d').drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-              snap.webcam = canvas.toDataURL('image/jpeg', 0.85);
-              lastGoodSnap.current.webcam = snap.webcam;
-          } else {
-              snap.webcam = lastGoodSnap.current.webcam; // Use last known good
-          }
-      } catch (e) {
-          console.warn('Webcam capture failed:', e);
-          snap.webcam = lastGoodSnap.current.webcam;
-      }
-      try {
-          if (screenRef.current && screenRef.current.readyState >= 2) {
-              const canvas = document.createElement('canvas');
-              canvas.width = 1280; canvas.height = 720;
-              canvas.getContext('2d').drawImage(screenRef.current, 0, 0, canvas.width, canvas.height);
-              snap.screen = canvas.toDataURL('image/jpeg', 0.85);
-              lastGoodSnap.current.screen = snap.screen;
-          } else {
-              snap.screen = lastGoodSnap.current.screen;
-          }
-      } catch (e) {
-          console.warn('Screen capture failed:', e);
-          snap.screen = lastGoodSnap.current.screen;
-      }
-      return snap;
-  }, []);
+  /* captureSnapshot moved up */
 
   // Pass captureSnapshot to proctoring hooks so they can grab evidence on violation
   useProctoring({

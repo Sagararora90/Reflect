@@ -1,0 +1,204 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Reflect v3 Design System - Dark Crystal (Deep Navy / Charcoal) */
+:root {
+  /* Color Tokens */
+  --rf-bg-canvas: #0A0C10;
+  --rf-bg-surface: #12151C;
+  --rf-bg-panel: #1E232E;
+  
+  --rf-text-pure: #F8FAFC;
+  --rf-text-silver: #E2E8F0;
+  --rf-text-dim: #94A3B8;
+  --rf-text-muted: #64748B;
+  
+  --rf-accent: #3B82F6;
+  --rf-accent-light: #60A5FA;
+  --rf-accent-glow: rgba(59, 130, 246, 0.2);
+  --rf-accent-bloom: rgba(59, 130, 246, 0.04);
+  
+  --rf-success: #10B981;
+  --rf-warning: #F59E0B;
+  --rf-danger: #EF4444;
+  
+  --rf-border-glass: rgba(255, 255, 255, 0.06);
+  --rf-border-light: rgba(255, 255, 255, 0.1);
+  --rf-border-accent: rgba(59, 130, 246, 0.2);
+  
+  --rf-font: 'Inter', system-ui, -apple-system, sans-serif;
+  --rf-radius-sm: 12px;
+  --rf-radius-md: 16px;
+  --rf-radius-lg: 24px;
+  --rf-radius-full: 9999px;
+  
+  --rf-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  body {
+    background-color: var(--rf-bg-canvas);
+    color: var(--rf-text-pure);
+    font-family: var(--rf-font);
+    overflow-x: hidden;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+  
+@utility rf-glass {
+  @apply bg-rf-surface/70 backdrop-blur-xl border border-rf-border-glass;
+}
+
+@utility rf-animate-bloom {
+  @apply animate-bloom;
+}
+
+@layer components {
+  .rf-glass {
+    @apply rf-glass;
+  }
+
+  .rf-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+    letter-spacing: -0.01em;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .rf-btn-primary {
+    @apply text-white bg-rf-accent shadow-rf-btn-primary hover:bg-rf-accent-light hover:shadow-rf-btn-primary-hover hover:-translate-y-0.5;
+  }
+
+  .rf-btn-secondary {
+    @apply border border-rf-border-light text-rf-text-silver hover:bg-rf-panel hover:border-rf-border-accent;
+  }
+
+  .rf-btn-danger {
+    @apply bg-rf-danger text-white hover:bg-red-600 shadow-lg shadow-red-500/20;
+  }
+
+  .rf-input {
+    @apply w-full border px-4 py-3 text-rf-text-pure transition-all duration-300 outline-none bg-rf-surface/50;
+    border-color: var(--rf-border-light);
+    border-radius: var(--rf-radius-sm);
+  }
+  
+  .rf-input:focus {
+    border-color: var(--rf-accent);
+    box-shadow: 0 0 0 4px var(--rf-accent-bloom);
+    @apply bg-rf-surface;
+  }
+
+  .rf-text-gradient {
+    @apply bg-gradient-to-br from-rf-accent to-rf-accent-light bg-clip-text text-transparent;
+  }
+
+  .rf-section {
+    @apply max-w-[1200px] mx-auto px-8 py-20;
+  }
+
+  .rf-card {
+    @apply bg-rf-surface border border-rf-border-light rounded-rf-md shadow-rf-sm hover:shadow-rf-md transition-all duration-300;
+  }
+
+  .rf-card-glass {
+    @apply rf-glass rounded-rf-md transition-all duration-300;
+  }
+
+  .rf-exam-hud {
+    @apply h-[56px] bg-rf-canvas/80 backdrop-blur-3xl border-b border-rf-border-glass flex items-center justify-between px-5 z-[100] sticky top-0;
+  }
+
+  .rf-exam-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 56px);
+  }
+
+  .rf-exam-main {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+  }
+
+  .rf-exam-sidebar {
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .rf-index-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .rf-table {
+    @apply w-full text-left border-collapse rounded-rf-sm overflow-hidden;
+  }
+  
+  .rf-table th {
+    @apply bg-rf-panel px-6 py-4 text-xs font-bold uppercase tracking-wider text-rf-text-muted sticky top-0;
+  }
+  
+  .rf-table td {
+    @apply px-6 py-4 border-b border-rf-border-glass bg-rf-surface/40 transition-colors;
+  }
+  
+  .rf-table tr:hover td {
+    @apply bg-rf-panel/50;
+  }
+
+  .rf-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .rf-badge-success { @apply bg-rf-success/10 text-rf-success border border-rf-success/20; }
+  .rf-badge-warning { @apply bg-rf-warning/10 text-rf-warning border border-rf-warning/20; }
+  .rf-badge-danger { @apply bg-rf-danger/10 text-rf-danger border border-rf-danger/20; }
+}
+
+@keyframes bloom {
+  from { opacity: 0; filter: blur(10px); transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-rf-text-muted/20 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-rf-text-muted/40;
+}
+
+input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.4;
+  cursor: pointer;
+}
+

@@ -204,10 +204,11 @@ const Exam = () => {
               body: JSON.stringify({ type: reason, evidence, timestamp: Date.now(), sessionId: `${state.examId}_${user?._id}`, severity: 'medium' })
           }).catch(err => console.warn('Violation POST failed:', err));
 
-          if (user?._id) {
+          const userId = user?._id || user?.id;
+          if (userId) {
               socket.emit('violation', {
                   examId: state.examId,
-                  studentId: user._id,
+                  studentId: userId,
                   name: user.name || 'Student',
                   type: reason,
                   evidence,

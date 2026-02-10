@@ -34,7 +34,8 @@ const Exam = () => {
   const [startTime] = useState(Date.now());
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [hasStarted, setHasStarted] = useState(false);
+  /* State from Context or Fresh Start */
+  const [hasStarted, setHasStarted] = useState(state.isExamActive || false); // Sync with global state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
   const [behavioralLogs, setBehavioralLogs] = useState({
@@ -110,8 +111,18 @@ const Exam = () => {
 
   /* ── Socket & Proctoring ── */
   useEffect(() => {
+    // Debug: Log connection attempt
+    console.log("Exam.jsx: Checking join-exam conditions", { 
+        isActive: state.isExamActive, 
+        userId: user?._id, 
+        examId: state.examId,
+        socketConnected: socket.connected
+    });
+
       if (state.isExamActive && user?._id && state.examId) {
+          console.log("Exam.jsx: Joining exam room AND monitor room...");
           socket.emit('join-exam', state.examId, user._id);
+          
           socket.on('remote-command', ({ action, payload }) => {
               if (action === 'terminate') {
                   alert("Your exam has been ended by the proctor.");
@@ -130,15 +141,21 @@ const Exam = () => {
       if (state.isExamActive && user?._id && state.examId) {
         logInterval = setInterval(() => {
             const snap = captureSnapshot(); // Use the robust capture function
-            console.log("Sending student pulse for exam:", state.examId);
-            socket.emit('student-pulse', {
-                examId: state.examId,
-                studentId: user._id,
-                name: user.name || 'Student',
-                webcam: snap.webcam,
-                screen: snap.screen,
-                violations: state.warnings
-            });
+            console.log("Sending student pulse for exam:", state.examId, { socketConnected: socket.connected });
+            
+            // Force reconnect if needed? No, socket auto-reconnects.
+            if (socket.connected) {
+                socket.emit('student-pulse', {
+                    examId: state.examId,
+                    studentId: user._id,
+                    name: user.name || 'Student',
+                    webcam: snap.webcam,
+                    screen: snap.screen,
+                    violations: state.warnings
+                }); 
+            } else {
+                console.warn("Socket disconnected! Cannot send pulse.");
+            }
         }, 3000);
       }
       return () => { if (logInterval) clearInterval(logInterval); };

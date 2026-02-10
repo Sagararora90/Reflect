@@ -14,9 +14,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all for dev, restrict in prod
+    origin: "*", 
     methods: ["GET", "POST"]
-  }
+  },
+  maxHttpBufferSize: 1e8 // 100 MB for large payloads (images)
 });
 
 // Middleware
@@ -74,9 +75,11 @@ io.on('connection', (socket) => {
 
   socket.on('student-pulse', (data) => {
       // data: { examId, studentId, name, webcam, screen, violations }
-      // console.log(`Pulse from ${data.studentId}`); // verbose
+      const room = `monitor-${data.examId}`;
+      const size = io.sockets.adapter.rooms.get(room)?.size || 0;
+      console.log(`Pulse from ${data.studentId} -> ${room} (${size} listeners)`); 
       // Relay to the monitor room
-      io.to(`monitor-${data.examId}`).emit('monitor-update', data);
+      io.to(room).emit('monitor-update', data);
   });
 
   socket.on('admin-action', ({ studentId, action, payload }) => {

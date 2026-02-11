@@ -27,6 +27,7 @@ const initialState = savedState ? { ...savedState, streams: { webcam: null, scre
   streams: { webcam: null, screen: null }, // Store MediaStream objects
   studentName: "Candidate",
   examId: null,
+  userId: null,
   examData: null, // Store full exam object (questions, config)
   proctorMessage: null,
 };
@@ -73,18 +74,25 @@ const examReducer = (state, action) => {
     case 'SET_FULLSCREEN':
       newState = { ...state, isFullScreen: action.payload };
       break;
-    case 'SET_EXAM_ID':
-      if (state.examId === action.payload) return state;
+    case 'SET_EXAM_ID': {
+      const { id, userId } = action.payload;
+      // If same exam AND same user, don't reset (allow resume)
+      if (state.examId === id && state.userId === userId) return state;
+      
       newState = { 
           ...state, 
-          examId: action.payload,
+          examId: id,
+          userId: userId,
           warnings: 0,
           violations: [],
           logs: [],
           examStatus: 'idle',
-          isExamActive: false
+          isExamActive: false,
+          submissionReason: null,
+          proctorMessage: null
       };
       break;
+    }
     case 'SET_EXAM_DATA':
       newState = { ...state, examData: action.payload };
       break;

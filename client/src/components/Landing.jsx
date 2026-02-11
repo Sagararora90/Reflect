@@ -41,7 +41,7 @@ const Landing = () => {
       })
       .then(data => {
           setExamData(data);
-          dispatch({ type: 'SET_EXAM_ID', payload: data._id });
+          dispatch({ type: 'SET_EXAM_ID', payload: { id: data._id, userId: user?.id || user?._id } });
           dispatch({ type: 'SET_EXAM_DATA', payload: data });
           setLoading(false);
       })

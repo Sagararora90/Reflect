@@ -28,6 +28,7 @@ const initialState = savedState ? { ...savedState, streams: { webcam: null, scre
   studentName: "Candidate",
   examId: null,
   examData: null, // Store full exam object (questions, config)
+  proctorMessage: null,
 };
 
 const examReducer = (state, action) => {
@@ -59,7 +60,13 @@ const examReducer = (state, action) => {
       newState = { ...state, isExamActive: false, examStatus: 'terminated' };
       break;
     case 'SUBMIT_EXAM':
-      newState = { ...state, isExamActive: false, examStatus: 'submitted' };
+      // payload might be 'manual', 'timeout', 'max_warnings', 'proctor'
+      newState = { 
+          ...state, 
+          isExamActive: false, 
+          examStatus: 'submitted',
+          submissionReason: action.payload || 'manual' 
+      };
       break;
     case 'SET_STREAMS':
       return { ...state, streams: { ...state.streams, ...action.payload } }; // Don't save streams to localstorage
@@ -93,6 +100,9 @@ const examReducer = (state, action) => {
         ...state,
         logs: [...state.logs, action.payload]
       };
+      break;
+    case 'SET_PROCTOR_MESSAGE':
+      newState = { ...state, proctorMessage: action.payload };
       break;
     case 'RESET':
       localStorage.removeItem('examState');

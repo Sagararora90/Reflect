@@ -1,48 +1,83 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
-import { AlertOctagon, CheckCircle2, ShieldOff, ArrowLeft } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ShieldOff, ArrowLeft, Clock } from 'lucide-react';
 
 
 const Terminate = () => {
   const { state } = useExam();
   const navigate = useNavigate();
-  const isSubmission = state.examStatus === 'submitted';
+  const reason = state.submissionReason || (state.examStatus === 'submitted' ? 'manual' : null);
+
+  const getStatusContent = () => {
+      switch(reason) {
+          case 'proctor_terminated':
+              return {
+                  title: "Exam Terminated",
+                  desc: "Your exam was ended by the proctor.",
+                  icon: <ShieldOff size={32} />,
+                  bg: "bg-rf-danger/10",
+                  text: "text-rf-danger",
+                  border: "border-rf-danger/20",
+                  detail: "Your session was flagged by the proctor. All evidence has been recorded."
+              };
+          case 'max_warnings':
+              return {
+                  title: "Auto-Submitted",
+                  desc: "Too many warnings.",
+                  icon: <AlertOctagon size={32} />,
+                  bg: "bg-rf-danger/10",
+                  text: "text-rf-danger",
+                  border: "border-rf-danger/20",
+                  detail: `You reached the warning limit (${state.warnings}/${state.maxWarnings}). Your exam has been automatically submitted.`
+              };
+          case 'timeout':
+              return {
+                  title: "Time Up!",
+                  desc: "Exam time expired.",
+                  icon: <Clock size={32} />,
+                  bg: "bg-rf-warning/10",
+                  text: "text-rf-warning",
+                  border: "border-rf-warning/20",
+                  detail: "Your answers have been auto-submitted as the time limit was reached."
+              };
+          case 'manual':
+          default:
+              return {
+                  title: "Exam Submitted",
+                  desc: "Answers saved successfully.",
+                  icon: <CheckCircle2 size={32} />,
+                  bg: "bg-rf-success/10",
+                  text: "text-rf-success",
+                  border: "border-rf-success/20",
+                  detail: "Your responses and monitoring data have been submitted. Your teacher will review the results."
+              };
+      }
+  };
+
+  const content = getStatusContent();
 
     return (
         <div className="min-h-screen bg-rf-canvas flex items-center justify-center px-4 py-20 rf-animate-bloom">
             <div className="max-w-md w-full">
                 <div className="rf-card-glass p-8 text-center">
                     {/* Status Icon */}
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isSubmission ? 'bg-rf-success/10 text-rf-success border border-rf-success/20' : 'bg-rf-danger/10 text-rf-danger border border-rf-danger/20'}`}>
-                        {isSubmission ? <CheckCircle2 size={32} /> : <ShieldOff size={32} />}
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 border ${content.bg} ${content.text} ${content.border}`}>
+                        {content.icon}
                     </div>
 
                     {/* Title */}
                     <h1 className="text-2xl font-bold text-rf-text-pure mb-1">
-                        {isSubmission ? "Exam Submitted" : "Exam Ended"}
+                        {content.title}
                     </h1>
                     <p className="text-sm text-rf-text-muted mb-6">
-                        {isSubmission ? "Your answers have been saved successfully" : "Too many warnings — your exam was auto-submitted"}
+                        {content.desc}
                     </p>
                     
-                    {/* Warning Details */}
-                    {!isSubmission && (
-                         <div className="bg-rf-danger/5 border border-rf-danger/20 rounded-xl p-5 mb-6 flex flex-col items-center gap-3">
-                             <AlertOctagon size={24} className="text-rf-danger" />
-                             <p className="text-sm text-rf-text-dim leading-relaxed">
-                                 You reached the maximum warning limit ({state.warnings}/{state.maxWarnings}). Your exam has been automatically submitted for review.
-                             </p>
-                        </div>
-                    )}
-
                     {/* Explanation */}
                     <div className="bg-rf-panel/30 border border-rf-border-glass rounded-xl p-5 mb-6 text-left">
                         <p className="text-sm text-rf-text-dim leading-relaxed">
-                            {isSubmission 
-                                ? "Your responses and monitoring data have been submitted. Your teacher will review the results." 
-                                : "Your session was flagged for multiple violations. All monitoring data including camera and screen recordings have been saved for review."
-                            }
+                            {content.detail}
                         </p>
                     </div>
 

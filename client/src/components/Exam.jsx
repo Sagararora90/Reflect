@@ -100,7 +100,7 @@ const Exam = () => {
           setTimeLeft(prev => {
               if (prev <= 1) {
                   clearInterval(timer);
-                  confirmSubmit();
+                  confirmSubmit('timeout');
                   return 0;
               }
               return prev - 1;
@@ -133,35 +133,35 @@ const Exam = () => {
           console.log("Exam.jsx: Joining exam room AND monitor room...");
           socket.emit('join-exam', state.examId, userId);
           
-          socket.on('remote-command', ({ action, payload }) => {
-              if (action === 'terminate') {
-                  alert("Your exam has been ENDED by the proctor.");
-                  const snap = captureSnapshot();
-                  dispatch({ 
-                      type: 'ADD_WARNING', 
-                      payload: { 
-                          reason: 'Exam Terminated by Proctor', 
-                          time: new Date().toLocaleTimeString(), 
-                          timestamp: new Date(), 
-                          evidence: snap.webcam 
-                      } 
-                  });
-                  // Allow state to update before submitting
-                  setTimeout(confirmSubmit, 500); 
-              }
-              if (action === 'warn') {
-                  const msg = 'Proctor Warning: ' + payload;
-                  alert(msg); // Show alert to student
-                  dispatch({ 
-                      type: 'ADD_WARNING', 
-                      payload: { 
-                          reason: msg, 
-                          time: new Date().toLocaleTimeString(), 
-                          timestamp: new Date() 
-                      } 
-                  });
-              }
-          });
+              socket.on('remote-command', ({ action, payload }) => {
+                  if (action === 'terminate') {
+                      dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: "Your exam has been ENDED by the proctor." });
+                      const snap = captureSnapshot();
+                      dispatch({ 
+                          type: 'ADD_WARNING', 
+                          payload: { 
+                              reason: 'Exam Terminated by Proctor', 
+                              time: new Date().toLocaleTimeString(), 
+                              timestamp: new Date(), 
+                              evidence: snap.webcam 
+                          } 
+                      });
+                      // Allow state to update and modal to show before submitting
+                      setTimeout(() => confirmSubmit('proctor_terminated'), 2000); 
+                  }
+                  if (action === 'warn') {
+                      const msg = 'Proctor Warning: ' + payload;
+                      dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: msg });
+                      dispatch({ 
+                          type: 'ADD_WARNING', 
+                          payload: { 
+                              reason: msg, 
+                              time: new Date().toLocaleTimeString(), 
+                              timestamp: new Date() 
+                          } 
+                      });
+                  }
+              });
       }
       return () => { socket.off('remote-command'); };
   }, [state.isExamActive, user, state.examId]);
@@ -257,7 +257,7 @@ const Exam = () => {
   }, [state.streams]);
 
   useEffect(() => {
-      if (state.warnings >= state.maxWarnings) confirmSubmit();
+      if (state.warnings >= state.maxWarnings) confirmSubmit('max_warnings');
   }, [state.warnings]);
 
   useEffect(() => {
@@ -268,7 +268,9 @@ const Exam = () => {
   const handleNext = () => currentQuestion < questions.length - 1 && setCurrentQuestion(currentQuestion + 1);
   const handlePrev = () => currentQuestion > 0 && setCurrentQuestion(currentQuestion - 1);
 
-  const confirmSubmit = async () => {
+  const confirmSubmit = async (reason = 'manual') => {
+      if (typeof reason !== 'string') reason = 'manual'; // Handle event object
+
       if (state.streams.webcam) state.streams.webcam.getTracks().forEach(track => track.stop());
       if (state.streams.screen) state.streams.screen.getTracks().forEach(track => track.stop());
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
@@ -280,7 +282,8 @@ const Exam = () => {
                   answers, timeTaken,
                   violations: state.violations.map(v => ({ type: v.reason || v.type, timestamp: v.timestamp || new Date(), evidence: v.evidence })),
                   warnings: state.warnings,
-                  behavioralData: behavioralLogs
+                  behavioralData: behavioralLogs,
+                  submissionReason: reason // Send to server too? Useful for backend!
               })
           });
           
@@ -293,7 +296,7 @@ const Exam = () => {
 
           if (!res.ok) throw new Error(data.msg || 'Submission failed');
           
-          dispatch({ type: 'SUBMIT_EXAM' });
+          dispatch({ type: 'SUBMIT_EXAM', payload: reason });
           navigate('/terminate');
       } catch (err) { 
           console.error(err);

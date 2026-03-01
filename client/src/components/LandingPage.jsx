@@ -11,11 +11,14 @@ import { FeatureAppleCard, BentoShowcase } from './FeatureComponents';
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
-const SpatialCore = ({ scrollRef }) => {
+const SpatialCore = ({ scrollRef, isActive }) => {
     const meshRef = useRef();
     const wireRef = useRef();
 
     useFrame((state) => {
+        // ✅ Apple trick: STOP GPU work when off-screen
+        if (!isActive.current) return;
+
         const t = state.clock.getElapsedTime();
         const scrollProgress = scrollRef.current || 0;
         
@@ -66,6 +69,7 @@ const LandingPage = () => {
     const heroSectionRef = useRef(null);
 
     const scrollRef = useRef(0);
+    const canvasActive = useRef(true);
     
     useGSAP(() => {
         // PIN THE HERO SECTION
@@ -75,12 +79,17 @@ const LandingPage = () => {
             end: "+=100%", // Faster exit from hero
             pin: true,
             scrub: 1,
+            anticipatePin: 1,
+            fastScrollEnd: true,
+            preventOverlaps: true,
             onUpdate: (self) => {
                 scrollRef.current = self.progress;
+                // ✅ Pause Three.js GPU when hero is almost gone
+                canvasActive.current = self.progress < 0.9;
             }
         });
 
-        // SCALE THE HERO TITLE ON SCROLL
+        // SCALE THE HERO TITLE ON SCROLL — GPU-only (transform + opacity)
         const tl = gsap.timeline({
             scrollTrigger: {
                 trigger: heroSectionRef.current,
@@ -94,57 +103,75 @@ const LandingPage = () => {
             scale: 0.9,
             opacity: 0,
             y: -100,
-            filter: "blur(20px)",
+            // ✅ NO filter:blur — animate transform+opacity only
             duration: 1
         });
 
-        // MOUSE MOVE MAGNETIC PARALLAX
-        const handleMouseMove = (e) => {
-            const { clientX, clientY } = e;
-            const xPos = (clientX / window.innerWidth - 0.5) * 60;
-            const yPos = (clientY / window.innerHeight - 0.5) * 60;
-            gsap.to(".ambient-orb", { x: xPos, y: yPos, duration: 2.5, ease: "power2.out" });
-        };
+        // MOUSE MOVE MAGNETIC PARALLAX — ✅ disabled on touch devices
+        const isTouchDevice = !window.matchMedia('(pointer: fine)').matches;
+        if (!isTouchDevice) {
+            const handleMouseMove = (e) => {
+                const { clientX, clientY } = e;
+                const xPos = (clientX / window.innerWidth - 0.5) * 60;
+                const yPos = (clientY / window.innerHeight - 0.5) * 60;
+                gsap.to(".ambient-orb", { x: xPos, y: yPos, duration: 2.5, ease: "power2.out" });
+            };
 
-        window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mousemove', handleMouseMove);
+            return () => window.removeEventListener('mousemove', handleMouseMove);
+        }
     }, { scope: mainRef });
 
+    // ✅ Throttled scroll state — ref for GSAP, rAF-batched setState for React
+    const bentoScrollRef = useRef(0);
     const [bentoScroll, setBentoScroll] = useState(0);
+    const bentoRafRef = useRef(null);
 
     useGSAP(() => {
-        // PIN AND SCRUB BENTO WIDGETS
         const bentoTrigger = ScrollTrigger.create({
             trigger: ".bento-pin-container",
-            start: "center 55%", // Drops the pinning position slightly below center viewport
+            start: "center 55%",
             end: "+=120%", 
             pin: true,
+            pinSpacing: true,
+            anticipatePin: 1,
+            fastScrollEnd: true,
+            preventOverlaps: true,
             scrub: 1,
-            onUpdate: (self) => setBentoScroll(self.progress)
+            onUpdate: (self) => {
+                bentoScrollRef.current = self.progress;
+                // ✅ Throttle React updates via rAF (not every scroll event)
+                if (!bentoRafRef.current) {
+                    bentoRafRef.current = requestAnimationFrame(() => {
+                        setBentoScroll(bentoScrollRef.current);
+                        bentoRafRef.current = null;
+                    });
+                }
+            }
         });
 
-        // LEFT BENTO (Calendar) ENTRANCE
+        // LEFT BENTO (Calendar) ENTRANCE — ✅ NO blur animation
         gsap.from(".bento-left", {
             x: "-60vw", 
             rotationY: -45,
             scale: 0.8,
             opacity: 0,
-            filter: "blur(60px)",
+            // ✅ Removed filter:blur(60px) — GPU-only: transform + opacity
             scrollTrigger: {
                 trigger: ".bento-pin-container",
                 start: "top 120%", 
-                end: "center 55%", // Must match pin start exactly
+                end: "center 55%",
                 scrub: 2, 
             }
         });
 
-        // RIGHT BENTO (Phone) ENTRANCE
+        // RIGHT BENTO (Phone) ENTRANCE — ✅ NO blur animation
         gsap.from(".bento-right", {
             x: "60vw", 
             rotationY: 45,
             scale: 0.8,
             opacity: 0,
-            filter: "blur(60px)",
+            // ✅ Removed filter:blur(60px) — GPU-only: transform + opacity
             scrollTrigger: {
                 trigger: ".bento-pin-container",
                 start: "top 120%", 
@@ -161,7 +188,8 @@ const LandingPage = () => {
             gsap.from(card, {
                 y: 100,
                 opacity: 0,
-                filter: "blur(20px)",
+                // ✅ Removed filter:blur(20px) — GPU-only
+                scale: 0.95,
                 duration: 1.2,
                 delay: i * 0.15,
                 ease: "expo.out",
@@ -182,25 +210,25 @@ const LandingPage = () => {
     return (
         <div ref={mainRef} className="bg-white selection:bg-primary/30 overflow-hidden font-sans text-white">
             
-            {/* Cinematic Background */}
+            {/* ✅ Ambient glow — radial-gradient instead of blur (Apple trick) */}
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="ambient-orb absolute top-[-10%] left-[-10%] w-[80vw] h-[80vw] bg-blue-600/5 rounded-full blur-[160px]" />
-                <div className="ambient-orb absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-purple-600/5 rounded-full blur-[140px]" />
+                <div className="ambient-orb absolute top-[-10%] left-[-10%] w-[80vw] h-[80vw] rounded-full" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.08), transparent 70%)' }} />
+                <div className="ambient-orb absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full" style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.08), transparent 70%)' }} />
             </div>
 
             {/* HERO SECTION */}
             <section id="home" ref={heroSectionRef} className="relative h-screen flex flex-col items-center justify-center text-center px-6 z-10">
-                {/* Spatial Core (Three.js) */}
+                {/* ✅ Three.js Canvas — inside hero, absolute positioned, pauses off-screen */}
                 <div className="absolute inset-0 z-0">
                     <Canvas>
                         <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-                        <SpatialCore scrollRef={scrollRef} />
+                        <SpatialCore scrollRef={scrollRef} isActive={canvasActive} />
                     </Canvas>
                     <div className="absolute inset-0 bg-gradient-to-b from-[#dcd8e1] to-[#dcd8e1]/0 pointer-events-none" />
                 </div>
 
                 <div ref={heroTitleRef} className="relative z-10 w-full max-w-5xl">
-                    <div className="inline-flex items-center gap-2 bg-black/5 backdrop-blur-3xl border border-black/10 px-6 py-2 rounded-full text-[10px] font-black tracking-[0.3em] text-primary uppercase mb-10 shadow-2xl">
+                    <div className="inline-flex items-center gap-2 bg-black/5 border border-black/10 px-6 py-2 rounded-full text-[10px] font-black tracking-[0.3em] text-primary uppercase mb-10 shadow-2xl">
                         <Activity size={14} className="animate-pulse" />
                         <span>System Integrity: Active</span>
                     </div>
@@ -234,14 +262,14 @@ const LandingPage = () => {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
                         <button 
-                            className="font-semibold bg-black/5 backdrop-blur-2xl text-black border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight shadow-[0_20px_50px_rgba(37,99,235,0.1)] hover:shadow-[0_30px_70px_#646464] active:scale-95 transition-all flex items-center gap-2" 
+                            className="font-semibold bg-white/80 text-black border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight shadow-[0_20px_50px_rgba(37,99,235,0.1)] hover:shadow-[0_30px_70px_#646464] active:scale-95 transition-all flex items-center gap-2" 
                             onClick={() => navigate('/login')}
                         >
                             Get Started
                             <ArrowRight size={20} className="stroke-[3px]" />
                         </button>
                         <button 
-                            className="bg-black backdrop-blur-2xl text-white border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight transition-all active:scale-95"
+                            className="bg-black text-white border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight transition-all active:scale-95"
                             onClick={() => navigate('/features')}
                         >
                             Learn More

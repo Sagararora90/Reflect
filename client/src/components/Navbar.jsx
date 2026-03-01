@@ -210,9 +210,9 @@ const Navbar = () => {
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.98 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         style={{ fontFamily: '"SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
                         className="fixed top-[48px] left-0 right-0 z-[999] p-4 bg-white border-b border-black/10 flex flex-col gap-2 origin-top rounded-b-3xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.3)]"

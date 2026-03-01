@@ -45,6 +45,38 @@
   }
 }
 
+/* =========================
+   GPU LAYER PROMOTION (Apple)
+========================= */
+.gpu {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.bento-left, .bento-right, .feature-card, .ambient-orb {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* ✅ Separated WebGL layer — fixed, outside scroll flow */
+.webgl-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ✅ prefers-reduced-motion — disable animations for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer components {
   /* Minimal UI Buttons */
   .btn {
@@ -205,6 +237,18 @@
   border-bottom: none;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
+  /* ✅ GPU promotion */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ✅ Reduce blur on mobile (Apple: minimize backdrop-filter on mobile) */
+@media (max-width: 767px) {
+  .liquid-nav {
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    background: rgba(255, 255, 255, 0.85);
+  }
 }
 
 .liquid-nav::before {

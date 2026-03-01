@@ -131,6 +131,7 @@ const LandingPage = () => {
         });
     }, { scope: mainRef });
 
+    // ✅ Throttled scroll state
     const bentoScrollRef = useRef(0);
     const [bentoScroll, setBentoScroll] = useState(0);
     const bentoRafRef = useRef(null);

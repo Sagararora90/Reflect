@@ -141,7 +141,7 @@ export const PhoneWidget = ({ rotation, progress }) => {
 
     return (
         /* ✅ Responsive width instead of fixed w-80 */
-        <div ref={cardRef} className="relative w-full max-w-[320px] h-[580px] border-[6px] border-white/10 rounded-[4.5rem] shadow-[0_80px_150px_-30px_rgba(0,0,0,0.8)] overflow-hidden ring-1 ring-white/20 transform-gpu mx-auto bg-black gpu">
+        <div ref={cardRef} className="relative w-full max-w-[320px] h-full max-h-[580px] border-[6px] border-white/10 rounded-[4.5rem] shadow-[0_80px_150px_-30px_rgba(0,0,0,0.8)] overflow-hidden ring-1 ring-white/20 transform-gpu mx-auto bg-black gpu">
             {/* Background Wallpaper */}
             <div 
                 className="absolute inset-0 z-0 bg-cover bg-center"

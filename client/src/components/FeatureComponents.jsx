@@ -7,13 +7,33 @@ import wallpaper from '/wallpaper.jpg';
 
 export const FeatureAppleCard = ({ icon, title, desc, className = "" }) => {
     return (
-        <div className={`feature-card p-10 rounded-[3.5rem] bg-black/40 border-[3px] border-white/10 hover:bg-black/60 hover:border-[3px] hover:border-white/20 hover:shadow-[0_40px_100px_-20px_rgba(255,255,255,0.05)] transition-all duration-500 flex flex-col justify-between group cursor-pointer shadow-2xl min-h-[360px] gpu ${className}`} role="button">
-            <div className="w-16 h-16 rounded-[1.5rem] bg-white/5 border border-white/10 flex items-center justify-center text-white/80 group-hover:scale-110 group-hover:bg-white group-hover:text-black group-hover:border-white/50 transition-all duration-500 shadow-xl">
-                {React.cloneElement(icon, { size: 28, strokeWidth: 2.2 })}
+        <div className={`feature-card relative p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] overflow-hidden transition-all duration-500 group cursor-pointer min-h-[300px] lg:min-h-[360px] flex flex-col justify-between gpu ${className}`} 
+            style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+            role="button"
+        >
+            {/* Ambient glow — Vision Pro style */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" style={{
+                background: 'radial-gradient(ellipse at 30% 20%, rgba(120,119,198,0.15) 0%, transparent 60%)'
+            }} />
+            {/* Icon — floating glass surface */}
+            <div className="relative w-14 h-14 lg:w-16 lg:h-16 rounded-2xl lg:rounded-[1.5rem] flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-lg"
+                style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+            >
+                {React.cloneElement(icon, { size: 26, strokeWidth: 1.8, className: "text-white/90" })}
             </div>
-            <div className="mt-12">
-                <h3 className="text-[26px] font-bold tracking-tight mb-3 text-white transition-colors duration-500 group-hover:text-white/90">{title}</h3>
-                <p className="text-[17px] text-white/50 font-medium leading-relaxed group-hover:text-white/70 transition-colors duration-500">{desc}</p>
+            <div className="mt-8 lg:mt-12 relative">
+                <h3 className="text-[22px] lg:text-[26px] font-semibold tracking-tight mb-2 lg:mb-3 text-white/95"
+                    style={{ fontFamily: '"SF Pro Display", "SF Pro Text", -apple-system, sans-serif' }}
+                >{title}</h3>
+                <p className="text-[15px] lg:text-[17px] text-white/45 font-normal leading-relaxed group-hover:text-white/60 transition-colors duration-500">{desc}</p>
             </div>
         </div>
     );
@@ -24,8 +44,8 @@ export const CalendarWidget = ({ rotation, progress }) => {
     const [currentDate, setCurrentDate] = useState(23);
 
     useEffect(() => {
-        const date = Math.min(31, 23 + Math.floor(progress * 9)); 
-        setCurrentDate(date);
+        // ✅ Skip directly: 23 → 31 (no in-between numbers)
+        setCurrentDate(progress > 0.5 ? 31 : 23);
     }, [progress]);
 
     const months = [

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ArrowRight, Shield, Cpu, Code, Eye, Lock, RefreshCw } from 'lucide-react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { MeshDistortMaterial, Icosahedron, PerspectiveCamera } from '@react-three/drei';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -14,9 +14,9 @@ gsap.registerPlugin(ScrollTrigger);
 const SpatialCore = ({ scrollRef, isActive }) => {
     const meshRef = useRef();
     const wireRef = useRef();
+    const { invalidate } = useThree();
 
     useFrame((state) => {
-        // ✅ Apple trick: STOP GPU work when off-screen
         if (!isActive.current) return;
 
         const t = state.clock.getElapsedTime();
@@ -32,11 +32,12 @@ const SpatialCore = ({ scrollRef, isActive }) => {
             wireRef.current.scale.setScalar(1.2 + scrollProgress * 0.8);
         }
 
-        // Handle opacity directly via material
         const fadeStart = 0.7;
         const opacity = Math.max(0, 1 - Math.max(0, (scrollProgress - fadeStart) / (1 - fadeStart)));
         if (meshRef.current.material) meshRef.current.material.opacity = 0.8 * opacity;
         if (wireRef.current.material) wireRef.current.material.opacity = (0.1 + scrollProgress * 0.2) * opacity;
+
+        invalidate();
     });
 
     return (
@@ -68,15 +69,20 @@ const LandingPage = () => {
     const heroTitleRef = useRef(null);
     const heroSectionRef = useRef(null);
 
+    const mobileCalendarRef = useRef(null);
+    const mobilePhoneRef = useRef(null);
+    const mobileCard1Ref = useRef(null);
+    const mobileCard2Ref = useRef(null);
+    const mobileCard3Ref = useRef(null);
+
     const scrollRef = useRef(0);
     const canvasActive = useRef(true);
     
     useGSAP(() => {
-        // PIN THE HERO SECTION
         ScrollTrigger.create({
             trigger: heroSectionRef.current,
             start: "top top",
-            end: "+=100%", // Faster exit from hero
+            end: "+=100%",
             pin: true,
             scrub: 1,
             anticipatePin: 1,
@@ -84,12 +90,10 @@ const LandingPage = () => {
             preventOverlaps: true,
             onUpdate: (self) => {
                 scrollRef.current = self.progress;
-                // ✅ Pause Three.js GPU when hero is almost gone
                 canvasActive.current = self.progress < 0.9;
             }
         });
 
-        // SCALE THE HERO TITLE ON SCROLL — GPU-only (transform + opacity)
         const tl = gsap.timeline({
             scrollTrigger: {
                 trigger: heroSectionRef.current,
@@ -103,11 +107,9 @@ const LandingPage = () => {
             scale: 0.9,
             opacity: 0,
             y: -100,
-            // ✅ NO filter:blur — animate transform+opacity only
             duration: 1
         });
 
-        // MOUSE MOVE MAGNETIC PARALLAX — ✅ disabled on touch devices
         const isTouchDevice = !window.matchMedia('(pointer: fine)').matches;
         if (!isTouchDevice) {
             const handleMouseMove = (e) => {
@@ -120,9 +122,15 @@ const LandingPage = () => {
             window.addEventListener('mousemove', handleMouseMove);
             return () => window.removeEventListener('mousemove', handleMouseMove);
         }
+
+        ScrollTrigger.addEventListener("scrollStart", () => {
+            document.body.classList.add("scrolling");
+        });
+        ScrollTrigger.addEventListener("scrollEnd", () => {
+            document.body.classList.remove("scrolling");
+        });
     }, { scope: mainRef });
 
-    // ✅ Throttled scroll state
     const bentoScrollRef = useRef(0);
     const [bentoScroll, setBentoScroll] = useState(0);
     const bentoRafRef = useRef(null);
@@ -130,7 +138,6 @@ const LandingPage = () => {
     useGSAP(() => {
         const mm = gsap.matchMedia();
 
-        // ✅ DESKTOP: Original side-by-side layout with pin
         mm.add("(min-width: 1024px)", () => {
             const bentoTrigger = ScrollTrigger.create({
                 trigger: ".bento-pin-container",
@@ -164,15 +171,29 @@ const LandingPage = () => {
             return () => bentoTrigger.kill();
         });
 
-        // ✅ MOBILE: Sequential widget showcase
-        // Phase 1 (0→0.45): Calendar visible, calendar animation
-        // Crossfade (0.45→0.55): Calendar fades out, phone fades in
-        // Phase 2 (0.55→1.0): Phone visible, phone animation
+        // ✅ MOBILE: Horizontal conveyor — each item slides in from right, exits left
+        // Calendar → Phone → Card1 → Card2 → Card3
         mm.add("(max-width: 1023px)", () => {
+            const calEl = mobileCalendarRef.current;
+            const phoneEl = mobilePhoneRef.current;
+            const c1 = mobileCard1Ref.current;
+            const c2 = mobileCard2Ref.current;
+            const c3 = mobileCard3Ref.current;
+            if (!calEl || !phoneEl) return;
+
+            const SX = 300; // slide distance in px
+            const allEls = [calEl, phoneEl, c1, c2, c3].filter(Boolean);
+
+            // Helper: hide all, then show only the one we need
+            const hideAll = () => allEls.forEach(el => gsap.set(el, { opacity: 0, x: SX }));
+
+            // Set initial state
+            hideAll();
+
             const mobileTrigger = ScrollTrigger.create({
                 trigger: ".mobile-widget-stage",
                 start: "top 10%",
-                end: "+=250%",
+                end: "+=400%",
                 pin: true,
                 pinSpacing: true,
                 anticipatePin: 1,
@@ -180,38 +201,102 @@ const LandingPage = () => {
                 scrub: 1,
                 onUpdate: (self) => {
                     const p = self.progress;
-                    bentoScrollRef.current = p;
 
-                    // Calendar: visible 0→0.5, fade out 0.4→0.5
-                    const calendarEl = document.querySelector('.mobile-calendar');
-                    const phoneEl = document.querySelector('.mobile-phone');
-                    if (calendarEl && phoneEl) {
-                        if (p < 0.4) {
-                            // Calendar fully visible, animating
-                            calendarEl.style.opacity = '1';
-                            calendarEl.style.transform = 'scale(1) translateZ(0)';
-                            phoneEl.style.opacity = '0';
-                            phoneEl.style.transform = 'scale(0.9) translateY(40px) translateZ(0)';
-                        } else if (p < 0.55) {
-                            // Crossfade zone
-                            const fade = (p - 0.4) / 0.15;
-                            calendarEl.style.opacity = String(1 - fade);
-                            calendarEl.style.transform = `scale(${1 - fade * 0.1}) translateY(${fade * -30}px) translateZ(0)`;
-                            phoneEl.style.opacity = String(fade);
-                            phoneEl.style.transform = `scale(${0.9 + fade * 0.1}) translateY(${(1 - fade) * 40}px) translateZ(0)`;
-                        } else {
-                            // Phone fully visible, animating
-                            calendarEl.style.opacity = '0';
-                            phoneEl.style.opacity = '1';
-                            phoneEl.style.transform = 'scale(1) translateZ(0)';
+                    // ── Phase 0 (0→0.06): Calendar slides in from right ──
+                    if (p < 0.06) {
+                        const t = p / 0.06;
+                        gsap.set(calEl, { opacity: t, x: SX * (1 - t), scale: 0.9 + t * 0.1 });
+                        gsap.set(phoneEl, { opacity: 0, x: SX });
+                        if (c1) gsap.set(c1, { opacity: 0, x: SX });
+                        if (c2) gsap.set(c2, { opacity: 0, x: SX });
+                        if (c3) gsap.set(c3, { opacity: 0, x: SX });
+                        if (!bentoRafRef.current) {
+                            bentoRafRef.current = requestAnimationFrame(() => {
+                                setBentoScroll(0);
+                                bentoRafRef.current = null;
+                            });
                         }
-                    }
 
-                    if (!bentoRafRef.current) {
-                        bentoRafRef.current = requestAnimationFrame(() => {
-                            setBentoScroll(bentoScrollRef.current);
-                            bentoRafRef.current = null;
-                        });
+                    // ── Phase 1 (0.06→0.20): Calendar animates (23→31) ──
+                    } else if (p < 0.20) {
+                        gsap.set(calEl, { opacity: 1, x: 0, scale: 1 });
+                        gsap.set(phoneEl, { opacity: 0, x: SX });
+                        const calP = (p - 0.06) / 0.14;
+                        if (!bentoRafRef.current) {
+                            bentoRafRef.current = requestAnimationFrame(() => {
+                                setBentoScroll(calP);
+                                bentoRafRef.current = null;
+                            });
+                        }
+
+                    // ── Phase 2 (0.20→0.28): Calendar exits left + Phone enters right ──
+                    } else if (p < 0.28) {
+                        const t = (p - 0.20) / 0.08;
+                        gsap.set(calEl, { opacity: 1 - t, x: -SX * t });
+                        gsap.set(phoneEl, { opacity: t, x: SX * (1 - t), scale: 0.9 + t * 0.1 });
+                        if (c1) gsap.set(c1, { opacity: 0, x: SX });
+                        if (!bentoRafRef.current) {
+                            bentoRafRef.current = requestAnimationFrame(() => {
+                                setBentoScroll(0);
+                                bentoRafRef.current = null;
+                            });
+                        }
+
+                    // ── Phase 3 (0.28→0.48): Phone animates (lock→unlock) ──
+                    } else if (p < 0.48) {
+                        gsap.set(calEl, { opacity: 0, x: -SX });
+                        gsap.set(phoneEl, { opacity: 1, x: 0, scale: 1 });
+                        if (c1) gsap.set(c1, { opacity: 0, x: SX });
+                        const phoneP = (p - 0.28) / 0.20;
+                        if (!bentoRafRef.current) {
+                            bentoRafRef.current = requestAnimationFrame(() => {
+                                setBentoScroll(phoneP);
+                                bentoRafRef.current = null;
+                            });
+                        }
+
+                    // ── Phase 4 (0.48→0.56): Phone exits left + Card1 enters right ──
+                    } else if (p < 0.56) {
+                        const t = (p - 0.48) / 0.08;
+                        gsap.set(calEl, { opacity: 0 });
+                        gsap.set(phoneEl, { opacity: 1 - t, x: -SX * t });
+                        if (c1) gsap.set(c1, { opacity: t, x: SX * (1 - t) });
+                        if (c2) gsap.set(c2, { opacity: 0, x: SX });
+                        if (c3) gsap.set(c3, { opacity: 0, x: SX });
+
+                    // ── Phase 5 (0.56→0.66): Card1 visible ──
+                    } else if (p < 0.66) {
+                        gsap.set(calEl, { opacity: 0 });
+                        gsap.set(phoneEl, { opacity: 0 });
+                        if (c1) gsap.set(c1, { opacity: 1, x: 0 });
+                        if (c2) gsap.set(c2, { opacity: 0, x: SX });
+                        if (c3) gsap.set(c3, { opacity: 0, x: SX });
+
+                    // ── Phase 6 (0.66→0.74): Card1 exits left + Card2 enters right ──
+                    } else if (p < 0.74) {
+                        const t = (p - 0.66) / 0.08;
+                        if (c1) gsap.set(c1, { opacity: 1 - t, x: -SX * t });
+                        if (c2) gsap.set(c2, { opacity: t, x: SX * (1 - t) });
+                        if (c3) gsap.set(c3, { opacity: 0, x: SX });
+
+                    // ── Phase 7 (0.74→0.84): Card2 visible ──
+                    } else if (p < 0.84) {
+                        if (c1) gsap.set(c1, { opacity: 0 });
+                        if (c2) gsap.set(c2, { opacity: 1, x: 0 });
+                        if (c3) gsap.set(c3, { opacity: 0, x: SX });
+
+                    // ── Phase 8 (0.84→0.92): Card2 exits left + Card3 enters right ──
+                    } else if (p < 0.92) {
+                        const t = (p - 0.84) / 0.08;
+                        if (c1) gsap.set(c1, { opacity: 0 });
+                        if (c2) gsap.set(c2, { opacity: 1 - t, x: -SX * t });
+                        if (c3) gsap.set(c3, { opacity: t, x: SX * (1 - t) });
+
+                    // ── Phase 9 (0.92→1.0): Card3 visible ──
+                    } else {
+                        if (c1) gsap.set(c1, { opacity: 0 });
+                        if (c2) gsap.set(c2, { opacity: 0 });
+                        if (c3) gsap.set(c3, { opacity: 1, x: 0 });
                     }
                 }
             });
@@ -219,7 +304,6 @@ const LandingPage = () => {
             return () => mobileTrigger.kill();
         });
 
-        // Feature card reveals (desktop only, mobile uses scroll-snap)
         const cards = gsap.utils.toArray(".feature-card");
         cards.forEach((card, i) => {
             gsap.from(card, {
@@ -244,7 +328,6 @@ const LandingPage = () => {
     return (
         <div ref={mainRef} className="bg-white selection:bg-primary/30 overflow-hidden font-sans text-white">
             
-            {/* ✅ Ambient glow — radial-gradient instead of blur (Apple trick) */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="ambient-orb absolute top-[-10%] left-[-10%] w-[80vw] h-[80vw] rounded-full" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.08), transparent 70%)' }} />
                 <div className="ambient-orb absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full" style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.08), transparent 70%)' }} />
@@ -252,9 +335,12 @@ const LandingPage = () => {
 
             {/* HERO SECTION */}
             <section id="home" ref={heroSectionRef} className="relative h-screen flex flex-col items-center justify-center text-center px-6 z-10">
-                {/* ✅ Three.js Canvas — inside hero, absolute positioned, pauses off-screen */}
                 <div className="absolute inset-0 z-0">
-                    <Canvas>
+                    <Canvas 
+                        frameloop="demand"
+                        dpr={[1, 1.5]}
+                        gl={{ powerPreference: "high-performance", antialias: false }}
+                    >
                         <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                         <SpatialCore scrollRef={scrollRef} isActive={canvasActive} />
                     </Canvas>
@@ -320,61 +406,53 @@ const LandingPage = () => {
 
             {/* FEATURES SECTION */}
             <section id="features" className="features-section relative bg-[#646668] text-white z-20 rounded-t-[5rem] border-t border-white/5 overflow-hidden">
-                <div className="max-w-7xl mx-auto px-8 py-32">
-                    <div className="mb-16 max-w-3xl text-center mx-auto">
-                        <h2 className="text-4xl sm:text-6xl font-black tracking-tighter mb-6 leading-[0.9]">
+                {/* FIX 1: Reduced bottom padding on mobile so widget stage sits closer to heading */}
+                <div className="max-w-7xl mx-auto px-8 pt-12 pb-4 lg:py-32 lg:pb-16">
+                    <div className="mb-4 lg:mb-16 max-w-3xl text-center mx-auto">
+                        <h2 className="text-4xl sm:text-6xl font-black tracking-tighter mb-4 lg:mb-6 leading-[0.9]">
                             Security <br className="hidden sm:block" /> that feels like magic.
                         </h2>
-                        <p className="text-xl text-white/40 font-medium leading-relaxed max-w-xl mx-auto">
+                        <p className="text-lg lg:text-xl text-white/40 font-medium leading-relaxed max-w-xl mx-auto">
                             We use spatial AI to protect your hard work. Simple, powerful, and private.
                         </p>
                     </div>
                 </div>
 
-                {/* ✅ MOBILE: Sequential pinned stage — calendar then phone */}
-                <div className="mobile-widget-stage lg:hidden relative w-full h-[80vh] flex items-center justify-center px-6">
+                {/* ✅ MOBILE: Conveyor belt — each item slides in/out individually */}
+                <div className="mobile-widget-stage lg:hidden relative w-full h-[75vh] flex items-center justify-center overflow-hidden">
                     {/* Calendar layer */}
-                    <div className="mobile-calendar absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 1 }}>
-                        <div className="w-full max-w-[90vw]">
+                    <div ref={mobileCalendarRef} className="mobile-calendar absolute inset-0 flex items-center justify-center px-4 gpu" style={{ opacity: 0 }}>
+                        <div className="w-full max-w-[92vw]">
                             <BentoShowcase scrollProgress={bentoScroll} showOnly="calendar" />
                         </div>
                     </div>
                     {/* Phone layer */}
-                    <div className="mobile-phone absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 0 }}>
+                    <div ref={mobilePhoneRef} className="mobile-phone absolute inset-0 flex items-center justify-center px-4 gpu" style={{ opacity: 0 }}>
                         <div className="w-full max-w-[80vw]">
                             <BentoShowcase scrollProgress={bentoScroll} showOnly="phone" />
                         </div>
                     </div>
-                </div>
-
-                {/* ✅ MOBILE: Horizontal scroll-snap cards (manual swipe) */}
-                <div className="lg:hidden overflow-x-auto scroll-snap-container px-6 pb-12 -mt-4">
-                    <div className="flex gap-5 w-max">
-                        <div className="shrink-0 w-[80vw] scroll-snap-item">
-                            <FeatureAppleCard 
-                                icon={<Cpu />}
-                                title="Neural Core"
-                                desc="Advanced machine learning models that monitor session integrity in real-time."
-                            />
+                    {/* Card 1 */}
+                    <div ref={mobileCard1Ref} className="absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 0 }}>
+                        <div className="w-full max-w-[85vw]">
+                            <FeatureAppleCard icon={<Cpu />} title="Neural Core" desc="Advanced machine learning models that monitor session integrity in real-time." />
                         </div>
-                        <div className="shrink-0 w-[80vw] scroll-snap-item">
-                            <FeatureAppleCard 
-                                icon={<Code />}
-                                title="Hybrid Logic"
-                                desc="A highly responsive environment supporting 40+ execution layers natively."
-                            />
+                    </div>
+                    {/* Card 2 */}
+                    <div ref={mobileCard2Ref} className="absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 0 }}>
+                        <div className="w-full max-w-[85vw]">
+                            <FeatureAppleCard icon={<Code />} title="Hybrid Logic" desc="A highly responsive environment supporting 40+ execution layers natively." />
                         </div>
-                        <div className="shrink-0 w-[80vw] scroll-snap-item">
-                            <FeatureAppleCard 
-                                icon={<Eye />}
-                                title="Biometric Sync"
-                                desc="Seamless presence verification and multi-layer structural gaze tracking."
-                            />
+                    </div>
+                    {/* Card 3 */}
+                    <div ref={mobileCard3Ref} className="absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 0 }}>
+                        <div className="w-full max-w-[85vw]">
+                            <FeatureAppleCard icon={<Eye />} title="Biometric Sync" desc="Seamless presence verification and multi-layer structural gaze tracking." />
                         </div>
                     </div>
                 </div>
 
-                {/* ✅ DESKTOP: Original layout (unchanged) */}
+                {/* DESKTOP: Original layout (unchanged) */}
                 <div className="hidden lg:block">
                     <div className="bento-pin-container relative w-full h-screen flex items-center justify-center">
                         <div className="max-w-7xl mx-auto px-8 w-full bento-widget-container">
@@ -402,12 +480,9 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* CTA/PRICING SECTION (RESTORED) */}
-            <section id="pricing" className="py-48 bg-gradient-to-t from-black to-black/0 text-white z-30 relative  -mt-10">
+            {/* CTA/PRICING SECTION */}
+            <section id="pricing" className="py-48 bg-gradient-to-t from-black to-black/0 text-white z-30 relative -mt-10">
                 <div className="max-w-7xl mx-auto px-10 text-center">
-                    {/* <div className="inline-flex p-6 bg-primary/10 rounded-[2.5rem] text-primary mb-12">
-                        <RefreshCw size={48} strokeWidth={2.5} className="animate-spin-slow" />
-                    </div> */}
                     <h2 className="text-[3.5rem] sm:text-[5rem] font-black tracking-tighter mb-10 leading-[1] text-white">
                         Ready to join<br /> the future?
                     </h2>
@@ -424,11 +499,11 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Footer Placeholder */}
+            {/* Footer */}
             <footer className="py-6 bg-white border-t border-border flex flex-col items-center gap-6">
                 <div className="text-black flex items-center gap-2 grayscale brightness-0 opacity-50">
                     <Shield size={24} />
-                    <span className="text-lg font-bold ">Reflect</span>
+                    <span className="text-lg font-bold">Reflect</span>
                 </div>
                 <p className="text-xs text-text-tertiary font-bold tracking-widest uppercase">© 2026 Reflect Technologies Inc.</p>
             </footer>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Layout, LogOut, Menu, X } from 'lucide-react';
+import { Layout, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
@@ -194,94 +194,169 @@ const Navbar = () => {
                         )}
                     </div>
 
-                    {/* Mobile Menu Toggle */}
+                    {/* Mobile Menu Toggle — animated hamburger */}
                     <div className="md:hidden">
                         <button 
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="p-2 text-black/60 hover:text-black"
+                            className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-black/5 transition-colors"
+                            aria-label="Toggle menu"
                         >
-                            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                            <div className="w-5 h-4 flex flex-col justify-between">
+                                <motion.span
+                                    animate={mobileMenuOpen ? { rotate: 45, y: 7 } : { rotate: 0, y: 0 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                                    className="block w-full h-[1.5px] bg-black rounded-full origin-center"
+                                />
+                                <motion.span
+                                    animate={mobileMenuOpen ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="block w-full h-[1.5px] bg-black rounded-full"
+                                />
+                                <motion.span
+                                    animate={mobileMenuOpen ? { rotate: -45, y: -7 } : { rotate: 0, y: 0 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                                    className="block w-full h-[1.5px] bg-black rounded-full origin-center"
+                                />
+                            </div>
                         </button>
                     </div>
                 </div>
             </nav>
 
-            {/* Mobile Menu Dropdown */}
+            {/* Mobile Menu — Full-screen frosted overlay */}
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        style={{ fontFamily: '"SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
-                        className="fixed top-[48px] left-0 right-0 z-[999] p-4 bg-white border-b border-black/10 flex flex-col gap-2 origin-top rounded-b-3xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.3)]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="fixed inset-0 z-[998] md:hidden"
                     >
-                        {navLinks.map((link) => {
-                            const isAnchor = link.path.startsWith('#');
-                            const LinkComponent = isAnchor ? 'a' : Link;
-                            const linkProps = isAnchor ? { href: link.path } : { to: link.path };
-                            
-                            return (
-                                <LinkComponent
-                                    key={link.path}
-                                    {...linkProps}
-                                    onClick={(e) => link.path.includes('#') ? scrollToSection(e, link.path) : setMobileMenuOpen(false)}
-                                    className="px-4 py-3 border-b border-black/10 last:border-0 rounded-xl hover:bg-black/5 transition-colors"
-                                >
-                                    <span className={clsx(
-                                        "text-[15px] font-medium transition-colors",
-                                        isActive(link.path) ? "text-black font-bold" : "text-black/70 hover:text-black"
-                                    )}>
-                                        {link.name}
-                                    </span>
-                                </LinkComponent>
-                            );
-                        })}
-                        
-                        <div className="mt-4 flex flex-col gap-3 px-4 pb-4">
-                            {user ? (
-                                <>
-                                    <Link
-                                        to={user.role === 'student' ? '/student/dashboard' : '/admin/dashboard'}
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="flex flex-col text-left"
-                                    >
-                                        <span className={clsx(
-                                            "text-[15px] font-medium transition-colors",
-                                            isActive(user.role === 'student' ? '/student/dashboard' : '/admin/dashboard')
-                                                ? "text-black font-bold"
-                                                : "text-black/70 hover:text-black"
-                                        )}>
-                                            Dashboard
-                                        </span>
-                                    </Link>
-                                    <button
-                                        onClick={() => { logout(); setMobileMenuOpen(false); }}
-                                        className="w-full text-[15px] text-black bg-black/10 hover:bg-black/20 py-3.5 rounded-2xl font-semibold transition-colors mt-2 text-center"
-                                    >
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link
-                                        to="/login"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="text-[15px] font-semibold text-black/70 hover:text-black transition-colors text-center py-2"
-                                    >
-                                        Login
-                                    </Link>
-                                    <Link
-                                        to="/register"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="w-full bg-black text-white text-[15px] font-semibold py-3.5 rounded-2xl text-center hover:bg-black/90 transition-all mt-1"
-                                    >
-                                        Start Free
-                                    </Link>
-                                </>
-                            )}
-                        </div>
+                        {/* Backdrop blur layer */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0"
+                            style={{
+                                background: 'rgba(255,255,255,0.85)',
+                                backdropFilter: 'blur(40px) saturate(180%)',
+                                WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                            }}
+                            onClick={() => setMobileMenuOpen(false)}
+                        />
+
+                        {/* Menu content */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }}
+                            className="relative pt-24 px-8 flex flex-col h-full"
+                            style={{ fontFamily: '"SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
+                        >
+                            {/* Nav links — staggered */}
+                            <div className="flex flex-col gap-1">
+                                {navLinks.map((link, i) => {
+                                    const isAnchor = link.path.startsWith('#');
+                                    const LinkComponent = isAnchor ? 'a' : Link;
+                                    const linkProps = isAnchor ? { href: link.path } : { to: link.path };
+                                    
+                                    return (
+                                        <motion.div
+                                            key={link.path}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            transition={{ delay: 0.1 + i * 0.06, type: "spring", stiffness: 300, damping: 30 }}
+                                        >
+                                            <LinkComponent
+                                                {...linkProps}
+                                                onClick={(e) => link.path.includes('#') ? scrollToSection(e, link.path) : setMobileMenuOpen(false)}
+                                                className="group flex items-center justify-between py-4 px-4 rounded-2xl hover:bg-black/5 active:bg-black/10 transition-colors"
+                                            >
+                                                <span className={clsx(
+                                                    "text-[28px] font-semibold tracking-tight transition-colors",
+                                                    isActive(link.path) ? "text-black" : "text-black/50 group-hover:text-black"
+                                                )}>
+                                                    {link.name}
+                                                </span>
+                                                {isActive(link.path) && (
+                                                    <div className="w-2 h-2 rounded-full bg-black" />
+                                                )}
+                                            </LinkComponent>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Divider */}
+                            <motion.div
+                                initial={{ scaleX: 0 }}
+                                animate={{ scaleX: 1 }}
+                                transition={{ delay: 0.35, duration: 0.4 }}
+                                className="h-px bg-black/10 my-6 mx-4 origin-left"
+                            />
+
+                            {/* Auth section */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                                className="flex flex-col gap-3 px-4"
+                            >
+                                {user ? (
+                                    <>
+                                        <Link
+                                            to={user.role === 'student' ? '/student/dashboard' : '/admin/dashboard'}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="flex items-center justify-between py-4 px-4 rounded-2xl hover:bg-black/5 transition-colors"
+                                        >
+                                            <span className="text-[20px] font-medium text-black/60">Dashboard</span>
+                                            <Layout size={18} className="text-black/30" />
+                                        </Link>
+                                        <button
+                                            onClick={() => { logout(); setMobileMenuOpen(false); }}
+                                            className="w-full text-[16px] font-semibold py-4 rounded-2xl text-center transition-all active:scale-[0.98]"
+                                            style={{
+                                                background: 'linear-gradient(135deg, rgba(0,0,0,0.08), rgba(0,0,0,0.04))',
+                                                border: '1px solid rgba(0,0,0,0.08)',
+                                                color: 'rgba(0,0,0,0.7)',
+                                            }}
+                                        >
+                                            Sign Out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link
+                                            to="/login"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="text-[16px] font-semibold text-black/50 hover:text-black text-center py-3 rounded-2xl hover:bg-black/5 transition-all"
+                                        >
+                                            Login
+                                        </Link>
+                                        <Link
+                                            to="/register"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="w-full text-[16px] font-semibold py-4 rounded-2xl text-center text-white transition-all active:scale-[0.98]"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #1d1d1f, #3a3a3c)',
+                                                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                                            }}
+                                        >
+                                            Start Free →
+                                        </Link>
+                                    </>
+                                )}
+                            </motion.div>
+
+                            {/* Bottom subtle branding */}
+                            <div className="mt-auto pb-12 text-center">
+                                <p className="text-[11px] font-medium text-black/20 tracking-[0.2em] uppercase">Reflect Technologies</p>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

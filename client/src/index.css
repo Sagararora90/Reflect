@@ -89,6 +89,14 @@
   transition: none; /* GSAP controls these directly */
 }
 
+/* ✅ Apple Secret: Scroll quality scaling — reduce GPU load during motion */
+.scrolling canvas {
+  opacity: 0.85;
+}
+.scrolling .ambient-orb {
+  opacity: 0.5;
+}
+
 /* ✅ prefers-reduced-motion — disable animations for accessibility */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

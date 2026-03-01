@@ -126,69 +126,109 @@ const LandingPage = () => {
     const bentoScrollRef = useRef(0);
     const [bentoScroll, setBentoScroll] = useState(0);
     const bentoRafRef = useRef(null);
+    const isMobile = useRef(false);
 
     useGSAP(() => {
-        const bentoTrigger = ScrollTrigger.create({
-            trigger: ".bento-pin-container",
-            start: "center 55%",
-            end: "+=120%", 
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            fastScrollEnd: true,
-            preventOverlaps: true,
-            scrub: 1,
-            onUpdate: (self) => {
-                bentoScrollRef.current = self.progress;
-                // ✅ Throttle React updates via rAF (not every scroll event)
-                if (!bentoRafRef.current) {
-                    bentoRafRef.current = requestAnimationFrame(() => {
-                        setBentoScroll(bentoScrollRef.current);
-                        bentoRafRef.current = null;
-                    });
+        const mm = gsap.matchMedia();
+
+        // ✅ DESKTOP: Original side-by-side layout with pin
+        mm.add("(min-width: 1024px)", () => {
+            const bentoTrigger = ScrollTrigger.create({
+                trigger: ".bento-pin-container",
+                start: "center 55%",
+                end: "+=120%", 
+                pin: true,
+                pinSpacing: true,
+                anticipatePin: 1,
+                fastScrollEnd: true,
+                scrub: 1,
+                onUpdate: (self) => {
+                    bentoScrollRef.current = self.progress;
+                    if (!bentoRafRef.current) {
+                        bentoRafRef.current = requestAnimationFrame(() => {
+                            setBentoScroll(bentoScrollRef.current);
+                            bentoRafRef.current = null;
+                        });
+                    }
                 }
-            }
+            });
+
+            gsap.from(".bento-left", {
+                x: "-60vw", rotationY: -45, scale: 0.8, opacity: 0,
+                scrollTrigger: { trigger: ".bento-pin-container", start: "top 120%", end: "center 55%", scrub: 2 }
+            });
+            gsap.from(".bento-right", {
+                x: "60vw", rotationY: 45, scale: 0.8, opacity: 0,
+                scrollTrigger: { trigger: ".bento-pin-container", start: "top 120%", end: "center 55%", scrub: 2 }
+            });
+
+            return () => bentoTrigger.kill();
         });
 
-        // LEFT BENTO (Calendar) ENTRANCE — ✅ NO blur animation
-        gsap.from(".bento-left", {
-            x: "-60vw", 
-            rotationY: -45,
-            scale: 0.8,
-            opacity: 0,
-            // ✅ Removed filter:blur(60px) — GPU-only: transform + opacity
-            scrollTrigger: {
-                trigger: ".bento-pin-container",
-                start: "top 120%", 
-                end: "center 55%",
-                scrub: 2, 
-            }
+        // ✅ MOBILE: Apple Vision Pro horizontal scroll showcase
+        mm.add("(max-width: 1023px)", () => {
+            isMobile.current = true;
+            const track = document.querySelector(".showcase-track");
+            const panels = gsap.utils.toArray(".showcase-panel");
+            if (!track || panels.length === 0) return;
+
+            // Calculate total horizontal scroll distance
+            const totalWidth = () => track.scrollWidth - window.innerWidth;
+
+            const horizontalScroll = gsap.to(track, {
+                x: () => -totalWidth(),
+                ease: "none",
+                scrollTrigger: {
+                    trigger: ".showcase-container",
+                    start: "top top",
+                    end: () => `+=${totalWidth() + window.innerHeight}`,
+                    pin: true,
+                    anticipatePin: 1,
+                    scrub: 1,
+                    fastScrollEnd: true,
+                    invalidateOnRefresh: true,
+                    onUpdate: (self) => {
+                        bentoScrollRef.current = self.progress;
+                        if (!bentoRafRef.current) {
+                            bentoRafRef.current = requestAnimationFrame(() => {
+                                setBentoScroll(bentoScrollRef.current);
+                                bentoRafRef.current = null;
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Sequential panel entrance animations
+            panels.forEach((panel, i) => {
+                gsap.from(panel, {
+                    opacity: 0,
+                    scale: 0.9,
+                    y: 40,
+                    duration: 1,
+                    ease: "power3.out",
+                    scrollTrigger: {
+                        trigger: panel,
+                        containerAnimation: horizontalScroll,
+                        start: "left 90%",
+                        end: "left 50%",
+                        scrub: 1,
+                    }
+                });
+            });
+
+            return () => {
+                horizontalScroll.kill();
+                isMobile.current = false;
+            };
         });
 
-        // RIGHT BENTO (Phone) ENTRANCE — ✅ NO blur animation
-        gsap.from(".bento-right", {
-            x: "60vw", 
-            rotationY: 45,
-            scale: 0.8,
-            opacity: 0,
-            // ✅ Removed filter:blur(60px) — GPU-only: transform + opacity
-            scrollTrigger: {
-                trigger: ".bento-pin-container",
-                start: "top 120%", 
-                end: "center 55%", 
-                scrub: 2, 
-            }
-        });
-
-
-
-        // FEATURE CARD REVEALS
+        // Desktop feature card reveals (unchanged)
         const cards = gsap.utils.toArray(".feature-card");
         cards.forEach((card, i) => {
             gsap.from(card, {
                 y: 100,
                 opacity: 0,
-                // ✅ Removed filter:blur(20px) — GPU-only
                 scale: 0.95,
                 duration: 1.2,
                 delay: i * 0.15,
@@ -202,9 +242,7 @@ const LandingPage = () => {
             });
         });
 
-        return () => {
-            bentoTrigger.kill();
-        };
+        return () => mm.revert();
     }, { scope: mainRef });
 
     return (
@@ -284,9 +322,9 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* FEATURES SECTION (RESTORED) */}
-            <section id="features" className="features-section relative py-32 bg-[#646668] text-white z-20 rounded-t-[5rem] border-t border-white/5 overflow-hidden">
-                <div className="max-w-7xl mx-auto px-8">
+            {/* FEATURES SECTION */}
+            <section id="features" className="features-section relative bg-[#646668] text-white z-20 rounded-t-[5rem] border-t border-white/5 overflow-hidden">
+                <div className="max-w-7xl mx-auto px-8 py-32">
                     <div className="mb-16 max-w-3xl text-center mx-auto">
                         <h2 className="text-4xl sm:text-6xl font-black tracking-tighter mb-6 leading-[0.9]">
                             Security <br className="hidden sm:block" /> that feels like magic.
@@ -295,14 +333,53 @@ const LandingPage = () => {
                             We use spatial AI to protect your hard work. Simple, powerful, and private.
                         </p>
                     </div>
+                </div>
 
+                {/* ✅ MOBILE: Horizontal scroll showcase (Apple Vision Pro style) */}
+                <div className="showcase-container lg:hidden relative w-full h-screen overflow-hidden">
+                    <div className="showcase-track flex items-center h-full gap-8 px-8 will-change-transform">
+                        {/* Panel 1: Calendar */}
+                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                            <BentoShowcase scrollProgress={bentoScroll} showOnly="calendar" />
+                        </div>
+                        {/* Panel 2: Phone */}
+                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                            <BentoShowcase scrollProgress={bentoScroll} showOnly="phone" />
+                        </div>
+                        {/* Panel 3-5: Feature Cards */}
+                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                            <FeatureAppleCard 
+                                icon={<Cpu />}
+                                title="Neural Core"
+                                desc="Advanced machine learning models that monitor session integrity in real-time."
+                            />
+                        </div>
+                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                            <FeatureAppleCard 
+                                icon={<Code />}
+                                title="Hybrid Logic"
+                                desc="A highly responsive environment supporting 40+ execution layers natively."
+                            />
+                        </div>
+                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                            <FeatureAppleCard 
+                                icon={<Eye />}
+                                title="Biometric Sync"
+                                desc="Seamless presence verification and multi-layer structural gaze tracking."
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* ✅ DESKTOP: Original layout (unchanged) */}
+                <div className="hidden lg:block">
                     <div className="bento-pin-container relative w-full h-screen flex items-center justify-center">
                         <div className="max-w-7xl mx-auto px-8 w-full bento-widget-container">
                             <BentoShowcase scrollProgress={bentoScroll} />
                         </div>
                     </div>
 
-                    <div className="feature-cards-grid grid grid-cols-1 md:grid-cols-3 gap-10 relative z-30 pb-24 max-w-7xl mx-auto w-full px-8">
+                    <div className="feature-cards-grid grid grid-cols-3 gap-10 relative z-30 pb-24 max-w-7xl mx-auto w-full px-8">
                         <FeatureAppleCard 
                             icon={<Cpu />}
                             title="Neural Core"

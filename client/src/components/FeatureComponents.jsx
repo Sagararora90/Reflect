@@ -265,7 +265,8 @@ export const PhoneWidget = ({ rotation, progress }) => {
 };
 
 // ✅ Mousemove stored in ref (no setState), scroll progress received as prop
-export const BentoShowcase = ({ scrollProgress }) => {
+// showOnly: 'calendar' | 'phone' | undefined (both for desktop)
+export const BentoShowcase = ({ scrollProgress, showOnly }) => {
     const mousePosRef = useRef({ x: 0, y: 0 });
 
     // ✅ Mousemove: only on desktop (pointer: fine), stored in ref not state
@@ -286,16 +287,31 @@ export const BentoShowcase = ({ scrollProgress }) => {
     const calendarProgress = Math.min(Math.max(scrollProgress * 2, 0), 1);
     const phoneProgress = Math.min(Math.max((scrollProgress - 0.3) * 1.5, 0), 1);
 
+    // Mobile: render single widget
+    if (showOnly === 'calendar') {
+        return (
+            <div className="w-full flex justify-center gpu">
+                <CalendarWidget rotation={mousePosRef.current} progress={calendarProgress} />
+            </div>
+        );
+    }
+    if (showOnly === 'phone') {
+        return (
+            <div className="w-full flex justify-center gpu">
+                <PhoneWidget rotation={mousePosRef.current} progress={phoneProgress} />
+            </div>
+        );
+    }
+
+    // Desktop: original grid layout
     return (
         <div 
             className="flex flex-col lg:grid lg:grid-cols-12 gap-10 lg:gap-12 items-center perspective-2000 w-full h-full lg:h-auto my-auto"
         >
-            {/* Calendar — constrained on mobile to prevent overlap */}
-            <div className="lg:col-span-8 flex justify-center w-full bento-left max-w-[95vw] md:max-w-none md:scale-90 lg:scale-100 origin-top lg:origin-center gpu">
+            <div className="lg:col-span-8 flex justify-center w-full bento-left md:scale-90 lg:scale-100 origin-top lg:origin-center gpu">
                 <CalendarWidget rotation={mousePosRef.current} progress={calendarProgress} />
             </div>
-            {/* Phone — scaled down on mobile, proper bottom padding */}
-            <div className="lg:col-span-4 flex justify-center w-full bento-right max-w-[75vw] md:max-w-none md:scale-90 lg:scale-100 origin-top lg:origin-center pb-16 lg:pb-0 gpu mx-auto">
+            <div className="lg:col-span-4 flex justify-center w-full bento-right md:scale-90 lg:scale-100 origin-top lg:origin-center pb-10 lg:pb-0 gpu">
                 <PhoneWidget rotation={mousePosRef.current} progress={phoneProgress} />
             </div>
         </div>

@@ -67,6 +67,17 @@
   z-index: 0;
 }
 
+/* ✅ Mobile horizontal showcase track (Apple Vision Pro style) */
+.showcase-track {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.showcase-panel {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
 /* ✅ prefers-reduced-motion — disable animations for accessibility */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

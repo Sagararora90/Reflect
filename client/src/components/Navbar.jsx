@@ -101,13 +101,6 @@ const Navbar = () => {
         };
     }, { scope: navRef });
 
-    // Hide Navbar in Exam and Terminate screens
-    if (['/exam', '/terminate'].includes(location.pathname)) return null;
-
-    const isActive = (path) => {
-        return location.pathname === path;
-    };
-
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
@@ -115,6 +108,13 @@ const Navbar = () => {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    // Hide Navbar in Exam and Terminate screens - Moved after all hooks
+    if (['/exam', '/terminate'].includes(location.pathname)) return null;
+
+    const isActive = (path) => {
+        return location.pathname === path;
+    };
 
     const navLinks = [
         { name: 'Home', path: '/' },

@@ -67,15 +67,26 @@
   z-index: 0;
 }
 
-/* ✅ Mobile horizontal showcase track (Apple Vision Pro style) */
-.showcase-track {
-  transform: translateZ(0);
-  will-change: transform;
+/* ✅ Mobile scroll-snap cards (manual horizontal swipe) */
+.scroll-snap-container {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+.scroll-snap-container::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari */
+}
+.scroll-snap-item {
+  scroll-snap-align: center;
 }
 
-.showcase-panel {
+/* Mobile widget stage layers */
+.mobile-calendar,
+.mobile-phone {
   transform: translateZ(0);
   will-change: transform, opacity;
+  transition: none; /* GSAP controls these directly */
 }
 
 /* ✅ prefers-reduced-motion — disable animations for accessibility */

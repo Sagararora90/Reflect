@@ -122,11 +122,10 @@ const LandingPage = () => {
         }
     }, { scope: mainRef });
 
-    // ✅ Throttled scroll state — ref for GSAP, rAF-batched setState for React
+    // ✅ Throttled scroll state
     const bentoScrollRef = useRef(0);
     const [bentoScroll, setBentoScroll] = useState(0);
     const bentoRafRef = useRef(null);
-    const isMobile = useRef(false);
 
     useGSAP(() => {
         const mm = gsap.matchMedia();
@@ -165,65 +164,62 @@ const LandingPage = () => {
             return () => bentoTrigger.kill();
         });
 
-        // ✅ MOBILE: Apple Vision Pro horizontal scroll showcase
+        // ✅ MOBILE: Sequential widget showcase
+        // Phase 1 (0→0.45): Calendar visible, calendar animation
+        // Crossfade (0.45→0.55): Calendar fades out, phone fades in
+        // Phase 2 (0.55→1.0): Phone visible, phone animation
         mm.add("(max-width: 1023px)", () => {
-            isMobile.current = true;
-            const track = document.querySelector(".showcase-track");
-            const panels = gsap.utils.toArray(".showcase-panel");
-            if (!track || panels.length === 0) return;
+            const mobileTrigger = ScrollTrigger.create({
+                trigger: ".mobile-widget-stage",
+                start: "top 10%",
+                end: "+=250%",
+                pin: true,
+                pinSpacing: true,
+                anticipatePin: 1,
+                fastScrollEnd: true,
+                scrub: 1,
+                onUpdate: (self) => {
+                    const p = self.progress;
+                    bentoScrollRef.current = p;
 
-            // Calculate total horizontal scroll distance
-            const totalWidth = () => track.scrollWidth - window.innerWidth;
-
-            const horizontalScroll = gsap.to(track, {
-                x: () => -totalWidth(),
-                ease: "none",
-                scrollTrigger: {
-                    trigger: ".showcase-container",
-                    start: "top top",
-                    end: () => `+=${totalWidth() + window.innerHeight}`,
-                    pin: true,
-                    anticipatePin: 1,
-                    scrub: 1,
-                    fastScrollEnd: true,
-                    invalidateOnRefresh: true,
-                    onUpdate: (self) => {
-                        bentoScrollRef.current = self.progress;
-                        if (!bentoRafRef.current) {
-                            bentoRafRef.current = requestAnimationFrame(() => {
-                                setBentoScroll(bentoScrollRef.current);
-                                bentoRafRef.current = null;
-                            });
+                    // Calendar: visible 0→0.5, fade out 0.4→0.5
+                    const calendarEl = document.querySelector('.mobile-calendar');
+                    const phoneEl = document.querySelector('.mobile-phone');
+                    if (calendarEl && phoneEl) {
+                        if (p < 0.4) {
+                            // Calendar fully visible, animating
+                            calendarEl.style.opacity = '1';
+                            calendarEl.style.transform = 'scale(1) translateZ(0)';
+                            phoneEl.style.opacity = '0';
+                            phoneEl.style.transform = 'scale(0.9) translateY(40px) translateZ(0)';
+                        } else if (p < 0.55) {
+                            // Crossfade zone
+                            const fade = (p - 0.4) / 0.15;
+                            calendarEl.style.opacity = String(1 - fade);
+                            calendarEl.style.transform = `scale(${1 - fade * 0.1}) translateY(${fade * -30}px) translateZ(0)`;
+                            phoneEl.style.opacity = String(fade);
+                            phoneEl.style.transform = `scale(${0.9 + fade * 0.1}) translateY(${(1 - fade) * 40}px) translateZ(0)`;
+                        } else {
+                            // Phone fully visible, animating
+                            calendarEl.style.opacity = '0';
+                            phoneEl.style.opacity = '1';
+                            phoneEl.style.transform = 'scale(1) translateZ(0)';
                         }
+                    }
+
+                    if (!bentoRafRef.current) {
+                        bentoRafRef.current = requestAnimationFrame(() => {
+                            setBentoScroll(bentoScrollRef.current);
+                            bentoRafRef.current = null;
+                        });
                     }
                 }
             });
 
-            // Sequential panel entrance animations
-            panels.forEach((panel, i) => {
-                gsap.from(panel, {
-                    opacity: 0,
-                    scale: 0.9,
-                    y: 40,
-                    duration: 1,
-                    ease: "power3.out",
-                    scrollTrigger: {
-                        trigger: panel,
-                        containerAnimation: horizontalScroll,
-                        start: "left 90%",
-                        end: "left 50%",
-                        scrub: 1,
-                    }
-                });
-            });
-
-            return () => {
-                horizontalScroll.kill();
-                isMobile.current = false;
-            };
+            return () => mobileTrigger.kill();
         });
 
-        // Desktop feature card reveals (unchanged)
+        // Feature card reveals (desktop only, mobile uses scroll-snap)
         const cards = gsap.utils.toArray(".feature-card");
         cards.forEach((card, i) => {
             gsap.from(card, {
@@ -335,33 +331,40 @@ const LandingPage = () => {
                     </div>
                 </div>
 
-                {/* ✅ MOBILE: Horizontal scroll showcase (Apple Vision Pro style) */}
-                <div className="showcase-container lg:hidden relative w-full h-screen overflow-hidden">
-                    <div className="showcase-track flex items-center h-full gap-8 px-8 will-change-transform">
-                        {/* Panel 1: Calendar */}
-                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                {/* ✅ MOBILE: Sequential pinned stage — calendar then phone */}
+                <div className="mobile-widget-stage lg:hidden relative w-full h-[80vh] flex items-center justify-center px-6">
+                    {/* Calendar layer */}
+                    <div className="mobile-calendar absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 1 }}>
+                        <div className="w-full max-w-[90vw]">
                             <BentoShowcase scrollProgress={bentoScroll} showOnly="calendar" />
                         </div>
-                        {/* Panel 2: Phone */}
-                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                    </div>
+                    {/* Phone layer */}
+                    <div className="mobile-phone absolute inset-0 flex items-center justify-center px-6 gpu" style={{ opacity: 0 }}>
+                        <div className="w-full max-w-[80vw]">
                             <BentoShowcase scrollProgress={bentoScroll} showOnly="phone" />
                         </div>
-                        {/* Panel 3-5: Feature Cards */}
-                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                    </div>
+                </div>
+
+                {/* ✅ MOBILE: Horizontal scroll-snap cards (manual swipe) */}
+                <div className="lg:hidden overflow-x-auto scroll-snap-container px-6 pb-12 -mt-4">
+                    <div className="flex gap-5 w-max">
+                        <div className="shrink-0 w-[80vw] scroll-snap-item">
                             <FeatureAppleCard 
                                 icon={<Cpu />}
                                 title="Neural Core"
                                 desc="Advanced machine learning models that monitor session integrity in real-time."
                             />
                         </div>
-                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                        <div className="shrink-0 w-[80vw] scroll-snap-item">
                             <FeatureAppleCard 
                                 icon={<Code />}
                                 title="Hybrid Logic"
                                 desc="A highly responsive environment supporting 40+ execution layers natively."
                             />
                         </div>
-                        <div className="showcase-panel shrink-0 w-[85vw] flex items-center justify-center gpu">
+                        <div className="shrink-0 w-[80vw] scroll-snap-item">
                             <FeatureAppleCard 
                                 icon={<Eye />}
                                 title="Biometric Sync"

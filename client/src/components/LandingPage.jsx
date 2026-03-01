@@ -1,323 +1,331 @@
-import React, { useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Zap, Cpu, Code, Lock, Globe, ArrowRight, Clock } from 'lucide-react';
+import { Activity, ArrowRight, Shield, Cpu, Code, Eye, Lock, RefreshCw } from 'lucide-react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { MeshDistortMaterial, Icosahedron, PerspectiveCamera } from '@react-three/drei';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
+import { FeatureAppleCard, BentoShowcase } from './FeatureComponents';
 
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
+
+const SpatialCore = ({ scrollRef }) => {
+    const meshRef = useRef();
+    const wireRef = useRef();
+
+    useFrame((state) => {
+        const t = state.clock.getElapsedTime();
+        const scrollProgress = scrollRef.current || 0;
+        
+        if (meshRef.current) {
+            meshRef.current.rotation.y = t * 0.2 + scrollProgress * 5;
+            meshRef.current.rotation.x = t * 0.1 + scrollProgress * 2;
+            meshRef.current.scale.setScalar(1 + scrollProgress * 0.5);
+        }
+        if (wireRef.current) {
+            wireRef.current.rotation.y = -t * 0.15 - scrollProgress * 3;
+            wireRef.current.scale.setScalar(1.2 + scrollProgress * 0.8);
+        }
+
+        // Handle opacity directly via material
+        const fadeStart = 0.7;
+        const opacity = Math.max(0, 1 - Math.max(0, (scrollProgress - fadeStart) / (1 - fadeStart)));
+        if (meshRef.current.material) meshRef.current.material.opacity = 0.8 * opacity;
+        if (wireRef.current.material) wireRef.current.material.opacity = (0.1 + scrollProgress * 0.2) * opacity;
+    });
+
+    return (
+        <group>
+            <Icosahedron ref={meshRef} args={[1, 15]}>
+                <MeshDistortMaterial 
+                    color="#2563eb" 
+                    speed={2} 
+                    distort={0.4} 
+                    radius={1} 
+                    emissive="#89a3f7ff"
+                    emissiveIntensity={0.5}
+                    transparent 
+                    opacity={0.8}
+                />
+            </Icosahedron>
+            <Icosahedron ref={wireRef} args={[1, 2]}>
+                <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.1} />
+            </Icosahedron>
+            <pointLight position={[10, 10, 10]} intensity={1.5} color="#a2c5f1ff" />
+            <ambientLight intensity={0.5} />
+        </group>
+    );
+};
 
 const LandingPage = () => {
     const navigate = useNavigate();
+    const mainRef = useRef(null);
+    const heroTitleRef = useRef(null);
+    const heroSectionRef = useRef(null);
 
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
+    const scrollRef = useRef(0);
+    
+    useGSAP(() => {
+        // PIN THE HERO SECTION
+        ScrollTrigger.create({
+            trigger: heroSectionRef.current,
+            start: "top top",
+            end: "+=100%", // Faster exit from hero
+            pin: true,
+            scrub: 1,
+            onUpdate: (self) => {
+                scrollRef.current = self.progress;
+            }
+        });
+
+        // SCALE THE HERO TITLE ON SCROLL
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: heroSectionRef.current,
+                start: "top top",
+                end: "70% top",
+                scrub: 1.5,
+            }
+        });
+
+        tl.to(heroTitleRef.current, {
+            scale: 0.9,
+            opacity: 0,
+            y: -100,
+            filter: "blur(20px)",
+            duration: 1
+        });
+
+        // MOUSE MOVE MAGNETIC PARALLAX
+        const handleMouseMove = (e) => {
+            const { clientX, clientY } = e;
+            const xPos = (clientX / window.innerWidth - 0.5) * 60;
+            const yPos = (clientY / window.innerHeight - 0.5) * 60;
+            gsap.to(".ambient-orb", { x: xPos, y: yPos, duration: 2.5, ease: "power2.out" });
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, { scope: mainRef });
+
+    const [bentoScroll, setBentoScroll] = useState(0);
+
+    useGSAP(() => {
+        // PIN AND SCRUB BENTO WIDGETS
+        const bentoTrigger = ScrollTrigger.create({
+            trigger: ".bento-pin-container",
+            start: "center 55%", // Drops the pinning position slightly below center viewport
+            end: "+=120%", 
+            pin: true,
+            scrub: 1,
+            onUpdate: (self) => setBentoScroll(self.progress)
+        });
+
+        // LEFT BENTO (Calendar) ENTRANCE
+        gsap.from(".bento-left", {
+            x: "-60vw", 
+            rotationY: -45,
+            scale: 0.8,
+            opacity: 0,
+            filter: "blur(60px)",
+            scrollTrigger: {
+                trigger: ".bento-pin-container",
+                start: "top 120%", 
+                end: "center 55%", // Must match pin start exactly
+                scrub: 2, 
+            }
+        });
+
+        // RIGHT BENTO (Phone) ENTRANCE
+        gsap.from(".bento-right", {
+            x: "60vw", 
+            rotationY: 45,
+            scale: 0.8,
+            opacity: 0,
+            filter: "blur(60px)",
+            scrollTrigger: {
+                trigger: ".bento-pin-container",
+                start: "top 120%", 
+                end: "center 55%", 
+                scrub: 2, 
+            }
+        });
+
+
+
+        // FEATURE CARD REVEALS
+        const cards = gsap.utils.toArray(".feature-card");
+        cards.forEach((card, i) => {
+            gsap.from(card, {
+                y: 100,
+                opacity: 0,
+                filter: "blur(20px)",
+                duration: 1.2,
+                delay: i * 0.15,
+                ease: "expo.out",
+                scrollTrigger: {
+                    trigger: card,
+                    start: "top 90%",
+                    toggleActions: "play none none reverse",
+                },
+                clearProps: "all"
+            });
+        });
+
+        return () => {
+            bentoTrigger.kill();
+        };
+    }, { scope: mainRef });
 
     return (
-        <div className="rf-animate-bloom selection:bg-rf-accent/10 bg-rf-canvas">
+        <div ref={mainRef} className="bg-white selection:bg-primary/30 overflow-hidden font-sans text-white">
             
+            {/* Cinematic Background */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="ambient-orb absolute top-[-10%] left-[-10%] w-[80vw] h-[80vw] bg-blue-600/5 rounded-full blur-[160px]" />
+                <div className="ambient-orb absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-purple-600/5 rounded-full blur-[140px]" />
+            </div>
+
             {/* HERO SECTION */}
-            <section className="relative flex flex-col items-center text-center pt-48 pb-16 px-8 overflow-hidden">
-                {/* Background Glows (Dark Mode) */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-rf-accent/10 blur-[150px] pointer-events-none -z-10" />
-                <div className="absolute -top-24 -right-24 w-[500px] h-[500px] bg-rf-accent/20 blur-[120px] rounded-full pointer-events-none -z-10 opacity-40" />
-                
-                <div className="inline-flex items-center gap-2 bg-rf-accent/10 border border-rf-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-rf-accent-light mb-10 animate-pulse">
-                    <Zap size={14} />
-                    <span>AI Assessment Logic v4.0 is live</span>
+            <section id="home" ref={heroSectionRef} className="relative h-screen flex flex-col items-center justify-center text-center px-6 z-10">
+                {/* Spatial Core (Three.js) */}
+                <div className="absolute inset-0 z-0">
+                    <Canvas>
+                        <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+                        <SpatialCore scrollRef={scrollRef} />
+                    </Canvas>
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#dcd8e1] to-[#dcd8e1]/0 pointer-events-none" />
                 </div>
 
-                <h1 className="text-6xl md:text-8xl lg:text-9xl font-black leading-[0.95] tracking-tight mb-8 text-rf-text-pure">
-                    Think better with <br />
-                    <span className="rf-text-gradient">Reflect Platform</span>
-                </h1>
+                <div ref={heroTitleRef} className="relative z-10 w-full max-w-5xl">
+                    <div className="inline-flex items-center gap-2 bg-black/5 backdrop-blur-3xl border border-black/10 px-6 py-2 rounded-full text-[10px] font-black tracking-[0.3em] text-primary uppercase mb-10 shadow-2xl">
+                        <Activity size={14} className="animate-pulse" />
+                        <span>System Integrity: Active</span>
+                    </div>
 
-                <p className="text-xl text-rf-text-dim max-w-2xl mb-12 leading-relaxed font-medium">
-                    The professional standard for high-stakes online examinations. 
-                    Monitor, analyze, and scale with absolute integrity and clarity.
-                </p>
-
-                <div className="flex flex-wrap items-center justify-center gap-5">
-                    <button 
-                        className="rf-btn rf-btn-primary px-10 py-4 text-base shadow-rf-btn-primary" 
-                        onClick={() => navigate('/login')}
+                    <h6 
+                        className="text-[26px] leading-[38px] md:text-[4rem] md:leading-[1] lg:text-[8rem] lg:leading-[0.8] font-black drop-shadow-[0_0_30px_rgba(37,99,235,0.2)] tracking-tighter mb-10 text-black"
+                        style={{
+                            fontFamily: '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif',
+                            fontWeight: 600,
+                            color: 'rgb(29, 29, 31)',
+                        }}
                     >
-                        Get Started for Free <ArrowRight size={20} className="ml-2" />
-                    </button>
-                    <button 
-                        className="rf-btn rf-btn-secondary px-10 py-4 text-base font-bold bg-rf-surface/40 backdrop-blur-md"
-                        onClick={() => navigate('/enterprise')}
+                        Smart.<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-black to-black/60">
+                            Secure.
+                        </span>
+                    </h6>
+
+                    <p 
+                        className="max-w-xl mx-auto mb-14 tracking-tight"
+                        style={{
+                            fontFamily: '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif',
+                            fontWeight: 600,
+                            color: 'rgb(29, 29, 31)',
+                            fontSize: '26px',
+                            lineHeight: '38px'
+                        }}
                     >
-                        Book a Demo
-                    </button>
-                </div>
+                        The world's most advanced spatial exam environment. Built for focus, engineered for trust.
+                    </p>
 
-                {/* THE PORTAL VISUAL - REDESIGNED FOR DARK MODE */}
-                <div className="w-full max-w-6xl mt-28 relative z-10 group px-4">
-                    <div className="absolute -inset-4 bg-rf-accent/20 blur-3xl opacity-20 group-hover:opacity-40 transition duration-1000" />
-                    <div className="rf-card-glass p-6 md:p-10 shadow-3xl group-hover:shadow-rf-accent/5 transition-all duration-700">
-                        {/* Control Buttons */}
-                        <div className="flex items-center gap-2 mb-10 ml-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                            <div className="w-3 h-3 rounded-full bg-amber-500/60" />
-                            <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {/* Dark Grid */}
-                            <div className="col-span-2 rf-card-glass !bg-rf-panel/20 p-8 flex flex-col gap-8 group/calendar hover:border-rf-accent/40 transition-all duration-500">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-rf-accent/10 rounded-xl text-rf-accent border border-rf-accent/20">
-                                            <Clock size={22} />
-                                        </div>
-                                        <span className="text-rf-text-pure text-xl font-bold">Session Grid</span>
-                                    </div>
-                                    <span className="text-[11px] text-rf-text-muted font-black tracking-widest uppercase">OCT 2026</span>
-                                </div>
-                                <div className="grid grid-cols-7 gap-3 text-center text-xs text-rf-text-dim font-bold">
-                                    {['M','T','W','T','F','S','S'].map(d=><span key={d} className="opacity-40">{d}</span>)}
-                                    {Array.from({ length: 31 }).map((_, i) => (
-                                        <div 
-                                            key={i} 
-                                            className={`aspect-square flex items-center justify-center rounded-lg transition-all duration-300 border border-transparent ${
-                                                i === 14 
-                                                ? 'bg-rf-accent text-white shadow-rf-accent-glow font-black border-rf-accent/50 scale-105' 
-                                                : 'hover:bg-rf-panel/50 hover:text-rf-text-pure cursor-pointer'
-                                            }`}
-                                        >
-                                            {i + 1}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Status Sidebar */}
-                            <div className="flex flex-col gap-6">
-                                <div className="rf-card-glass !bg-rf-panel/20 p-8 flex flex-col justify-between flex-1 group/time hover:border-rf-accent/40 transition-all duration-500">
-                                    <div>
-                                        <span className="text-[10px] text-rf-text-muted uppercase tracking-[0.2em] font-black">Next Influx</span>
-                                        <div className="text-5xl font-black text-rf-text-pure mt-4 group-hover/time:text-rf-accent transition-colors duration-300">
-                                            14:00
-                                        </div>
-                                        <div className="text-xs text-rf-text-dim mt-3 font-semibold">UTC+05:30 Standard Time</div>
-                                    </div>
-                                    
-                                    <div className="space-y-4 pt-8">
-                                        <div className="flex items-center justify-between text-[10px] font-black">
-                                            <span className="text-rf-text-muted uppercase tracking-widest">Integrity Level</span>
-                                            <span className="text-rf-success">V.SECURED</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-rf-canvas rounded-full overflow-hidden">
-                                            <div className="h-full bg-rf-accent w-3/4 shadow-glow" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-
-            {/* FEATURES GRID */}
-            <section id="features" className="rf-section">
-                <div className="flex flex-col items-center mb-20 text-center">
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-6 text-rf-text-pure">Built for Scale</h2>
-                    <p className="text-xl text-rf-text-dim max-w-2xl font-medium leading-relaxed">Everything you need to automate your high-stakes assessment workflow.</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <FeatureCard 
-                        icon={<Cpu size={26} />} 
-                        title="Vision AI" 
-                        desc="Advanced face detection and gaze tracking to maintain extreme integrity."
-                    />
-                    <FeatureCard 
-                        icon={<Code size={26} />} 
-                        title="Neural Sandbox" 
-                        desc="Locked-down runtime for 40+ languages with deep I/O validation."
-                    />
-                    <FeatureCard 
-                        icon={<Globe size={26} />} 
-                        title="Cloud Lockdown" 
-                        desc="Prevents tab switching, copy-pasting, and external tool usage instantly."
-                    />
-                </div>
-            </section>
-
-
-            {/* HOW IT WORKS */}
-            <section className="bg-rf-panel/20 relative py-32 px-8 overflow-hidden border-y border-rf-border-glass">
-                {/* Background Grid & Glows */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-rf-accent/5 blur-[160px] rounded-full pointer-events-none" />
-
-                <div className="max-w-[1200px] mx-auto relative z-10">
-                    <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-24 text-center text-rf-text-pure">
-                        Optimized <span className="rf-text-gradient">Workflow</span>
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-16 relative">
-                        {/* Connecting Line (Desktop) */}
-                        <div className="hidden md:block absolute top-14 left-[15%] right-[15%] h-px bg-rf-border-accent" />
-                        
-                        <StepItem 
-                            number="01" 
-                            title="Deploy" 
-                            desc="Design assessments with AI-generated questions and robust test cases." 
-                        />
-                        <StepItem 
-                            number="02" 
-                            title="Enforce" 
-                            desc="Real-time vision feeds with automated anomaly flags and alerts." 
-                        />
-                        <StepItem 
-                            number="03" 
-                            title="Certify" 
-                            desc="Detailed integrity reports and skill-gap analysis delivered instantly." 
-                        />
-                    </div>
-                </div>
-            </section>
-
-
-            {/* TRUST / SECURITY */}
-            <section id="security" className="rf-section">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-20 items-center">
-                    <div>
-                        <h2 className="text-5xl md:text-7xl font-black tracking-tight mb-8 text-rf-text-pure text-left leading-[1.05]">Zero-trust <br/> protocol</h2>
-                        <p className="text-xl text-rf-text-dim mb-12 leading-relaxed font-medium">
-                            The platform is architected with a security-first mindset. Every interaction is verified and encrypted at rest and in transit.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="rf-card-glass p-10 hover:-translate-y-1 transition-all duration-300">
-                                <Lock size={24} className="text-rf-accent mb-6" />
-                                <h4 className="text-rf-text-pure font-bold text-xl mb-3 tracking-tight">Compliance</h4>
-                                <p className="text-base text-rf-text-dim font-medium leading-relaxed">SOC2 Type II & GDPR Ready</p>
-                            </div>
-                            <div className="rf-card-glass p-10 hover:-translate-y-1 transition-all duration-300">
-                                <Shield size={24} className="text-rf-accent mb-6" />
-                                <h4 className="text-rf-text-pure font-bold text-xl mb-3 tracking-tight">Data Privacy</h4>
-                                <p className="text-base text-rf-text-dim font-medium leading-relaxed">Military-grade encryption</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-center opacity-[0.05] grayscale pointer-events-none">
-                        <Shield size={440} className="text-rf-text-pure fill-rf-text-pure" />
-                    </div>
-                </div>
-            </section>
-
-
-            {/* FINAL CTA */}
-            <section className="rf-section pb-32">
-                <div className="rf-card-glass relative overflow-hidden text-center py-28 px-10 shadow-3xl">
-                    {/* Background Bloom */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-rf-accent/5 blur-[120px] -z-10" />
-                    
-                    <h2 className="text-5xl md:text-8xl font-black mb-8 text-rf-text-pure tracking-tight leading-tight">Ready to scale <br/> with integrity?</h2>
-                    <p className="text-xl text-rf-text-dim max-w-2xl mx-auto mb-14 font-medium leading-relaxed">Join leading enterprises using Reflect to protect their testing integrity and scale with confidence.</p>
-                    <div className="flex flex-wrap items-center justify-center gap-6">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
                         <button 
-                            className="rf-btn rf-btn-primary px-12 py-4.5 text-lg shadow-rf-btn-primary" 
+                            className="font-semibold bg-black/5 backdrop-blur-2xl text-black border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight shadow-[0_20px_50px_rgba(37,99,235,0.1)] hover:shadow-[0_30px_70px_#646464] active:scale-95 transition-all flex items-center gap-2" 
                             onClick={() => navigate('/login')}
                         >
-                            Initialize Setup <ArrowRight size={22} className="ml-2" />
+                            Get Started
+                            <ArrowRight size={20} className="stroke-[3px]" />
                         </button>
                         <button 
-                            className="rf-btn rf-btn-secondary px-10 py-4.5 text-lg font-bold bg-rf-surface/20"
-                            onClick={() => navigate('/security')}
+                            className="bg-black backdrop-blur-2xl text-white border border-black/10 px-10 py-2 rounded-[1.75rem] text-lg tracking-tight transition-all active:scale-95"
+                            onClick={() => navigate('/features')}
                         >
-                            Contact Security
+                            Learn More
                         </button>
+                    </div>
+
+                </div>
+
+                <div className="absolute bottom-12 flex flex-col items-center gap-4 opacity-30">
+                    <div className="w-1 h-1 rounded-full bg-white animate-bounce" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white">Scroll down</span>
+                </div>
+            </section>
+
+            {/* FEATURES SECTION (RESTORED) */}
+            <section id="features" className="features-section relative py-32 bg-[#646668] text-white z-20 rounded-t-[5rem] border-t border-white/5 overflow-hidden">
+                <div className="max-w-7xl mx-auto px-8">
+                    <div className="mb-16 max-w-3xl text-center mx-auto">
+                        <h2 className="text-4xl sm:text-6xl font-black tracking-tighter mb-6 leading-[0.9]">
+                            Security <br className="hidden sm:block" /> that feels like magic.
+                        </h2>
+                        <p className="text-xl text-white/40 font-medium leading-relaxed max-w-xl mx-auto">
+                            We use spatial AI to protect your hard work. Simple, powerful, and private.
+                        </p>
+                    </div>
+
+                    <div className="bento-pin-container relative w-full h-screen flex items-center justify-center">
+                        <div className="max-w-7xl mx-auto px-8 w-full bento-widget-container">
+                            <BentoShowcase scrollProgress={bentoScroll} />
+                        </div>
+                    </div>
+
+                    <div className="feature-cards-grid grid grid-cols-1 md:grid-cols-3 gap-10 relative z-30 pb-24 max-w-7xl mx-auto w-full px-8">
+                        <FeatureAppleCard 
+                            icon={<Cpu />}
+                            title="Neural Core"
+                            desc="Advanced machine learning models that monitor session integrity in real-time."
+                        />
+                        <FeatureAppleCard 
+                            icon={<Code />}
+                            title="Hybrid Logic"
+                            desc="A highly responsive environment supporting 40+ execution layers natively."
+                        />
+                        <FeatureAppleCard 
+                            icon={<Eye />}
+                            title="Biometric Sync"
+                            desc="Seamless presence verification and multi-layer structural gaze tracking."
+                        />
                     </div>
                 </div>
             </section>
 
+            {/* CTA/PRICING SECTION (RESTORED) */}
+            <section id="pricing" className="py-48 bg-gradient-to-t from-black to-black/0 text-white z-30 relative  -mt-10">
+                <div className="max-w-7xl mx-auto px-10 text-center">
+                    {/* <div className="inline-flex p-6 bg-primary/10 rounded-[2.5rem] text-primary mb-12">
+                        <RefreshCw size={48} strokeWidth={2.5} className="animate-spin-slow" />
+                    </div> */}
+                    <h2 className="text-[3.5rem] sm:text-[5rem] font-black tracking-tighter mb-10 leading-[1] text-white">
+                        Ready to join<br /> the future?
+                    </h2>
+                    <p className="text-xl text-white/50 max-w-xl mx-auto mb-16 font-medium leading-relaxed">
+                        Join thousands of students and institutions moving to a smarter, safer way to test.
+                    </p>
+                    <button 
+                        className="font-semibold bg-white text-black px-12 py-2 rounded-[1.75rem] font-black shadow-2xl hover:bg-black/90 hover:text-white transition-all flex items-center gap-4 mx-auto"
+                        onClick={() => navigate('/pricing')}
+                    >
+                        Sign Up Now
+                        <ArrowRight size={28} strokeWidth={2} />
+                    </button>
+                </div>
+            </section>
 
-            {/* FOOTER */}
-            <footer className="bg-rf-surface border-t border-rf-border-glass pt-32 pb-16 px-8 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rf-accent/20 to-transparent" />
-                
-                <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_repeat(3,1fr)] gap-20 mb-28">
-                    <div>
-                        <div className="flex items-center gap-4 mb-10">
-                            <div className="p-2.5 bg-rf-accent rounded-xl shadow-rf-accent">
-                                <Shield size={28} className="text-white" />
-                            </div>
-                            <span className="text-2xl font-bold tracking-tight text-rf-text-pure">Reflect</span>
-                        </div>
-                        <p className="text-rf-text-dim max-w-xs leading-relaxed font-medium">
-                            The professional assessment standard for modern, security-conscious organizations.
-                        </p>
-                    </div>
-                    <div>
-                        <h4 className="text-rf-text-pure font-black mb-8 text-[10px] uppercase tracking-[0.2em]">Platform</h4>
-                        <ul className="space-y-4">
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Vision AI</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Neural Sandbox</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Enterprise API</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="text-rf-text-pure font-black mb-8 text-[10px] uppercase tracking-[0.2em]">Resources</h4>
-                        <ul className="space-y-4">
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Security Docs</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Privacy Policy</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Terms of Use</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="text-rf-text-pure font-black mb-8 text-[10px] uppercase tracking-[0.2em]">Support</h4>
-                        <ul className="space-y-4">
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Help Center</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">API Status</a></li>
-                            <li><a href="#" className="text-rf-text-dim hover:text-rf-accent transition-all font-medium text-sm">Chat with Sales</a></li>
-                        </ul>
-                    </div>
+            {/* Footer Placeholder */}
+            <footer className="py-6 bg-white border-t border-border flex flex-col items-center gap-6">
+                <div className="text-black flex items-center gap-2 grayscale brightness-0 opacity-50">
+                    <Shield size={24} />
+                    <span className="text-lg font-bold ">Reflect</span>
                 </div>
-                <div className="max-w-[1200px] mx-auto border-t border-rf-border-glass pt-12 flex flex-col md:flex-row items-center justify-between gap-8 text-xs text-rf-text-muted font-medium">
-                    <span>&copy; 2026 Reflect International. All rights reserved.</span>
-                    <div className="flex items-center gap-10">
-                        <span className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rf-success shadow-success" />
-                            System Operational
-                        </span>
-                        <span className="opacity-40 font-mono">V3.4.0_V0ID</span>
-                    </div>
-                </div>
+                <p className="text-xs text-text-tertiary font-bold tracking-widest uppercase">© 2026 Reflect Technologies Inc.</p>
             </footer>
         </div>
     );
 };
 
-const FeatureCard = ({ icon, title, desc }) => (
-    <div className="group flex flex-col gap-6 p-8 rounded-2xl rf-glass transition-all duration-300 hover:border-rf-accent/40 hover:-translate-y-2 relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 p-4 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-300 pointer-events-none">
-            {React.cloneElement(icon, { size: 160 })}
-        </div>
-        <div className="w-14 h-14 rounded-xl bg-rf-panel/60 flex items-center justify-center text-rf-accent group-hover:bg-rf-accent group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-rf-accent">
-            {icon}
-        </div>
-        <div className="relative z-10">
-            <h3 className="text-rf-text-pure font-bold text-2xl mb-3 tracking-tight leading-tight">{title}</h3>
-            <p className="text-rf-text-dim text-base font-medium leading-relaxed group-hover:text-rf-text-silver transition-colors duration-300">{desc}</p>
-        </div>
-    </div>
-);
-
-const StepItem = ({ number, title, desc }) => (
-    <div className="flex flex-col items-center text-center gap-6 group relative z-10">
-        <div className="w-24 h-24 rounded-full rf-glass flex items-center justify-center relative transition-all duration-300 group-hover:scale-110 group-hover:border-rf-accent/40 shadow-2xl">
-            <div className="absolute inset-2 rounded-full border border-rf-accent/20 border-dashed animate-[spin_20s_linear_infinite] opacity-40" />
-            <span className="font-black text-2xl text-rf-text-pure group-hover:text-rf-accent transition-all duration-300">
-                {number}
-            </span>
-        </div>
-        <div>
-            <h3 className="text-rf-text-pure font-bold text-2xl mb-3 tracking-tight leading-tight">{title}</h3>
-            <p className="text-rf-text-dim text-sm font-medium leading-relaxed max-w-xs mx-auto group-hover:text-rf-text-silver transition-colors duration-300">{desc}</p>
-        </div>
-    </div>
-);
-
 export default LandingPage;
-

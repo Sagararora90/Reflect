@@ -21,9 +21,11 @@ import {
   Eye,
   Send,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Zap
 } from 'lucide-react';
-
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 const Exam = () => {
   const navigate = useNavigate();
@@ -34,8 +36,7 @@ const Exam = () => {
   const [startTime] = useState(Date.now());
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  /* State from Context or Fresh Start */
-  const [hasStarted, setHasStarted] = useState(state.isExamActive || false); // Sync with global state
+  const [hasStarted, setHasStarted] = useState(state.isExamActive || false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
   const [behavioralLogs, setBehavioralLogs] = useState({
@@ -43,16 +44,42 @@ const Exam = () => {
       pastes: [],
       focusChanges: []
   });
+  const examContainerRef = useRef(null);
+
+  useGSAP(() => {
+    if (hasStarted) {
+      gsap.from(".exam-fade-in", {
+        y: 20,
+        opacity: 0,
+        duration: 1,
+        stagger: 0.1,
+        ease: "expo.out",
+        clearProps: "all"
+      });
+
+      // Magnetic options
+      const options = document.querySelectorAll(".magnetic-option");
+      options.forEach(opt => {
+        opt.addEventListener("mousemove", (e) => {
+            const rect = opt.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            gsap.to(opt, { x: x * 0.1, y: y * 0.1, duration: 0.5, ease: "power2.out" });
+        });
+        opt.addEventListener("mouseleave", () => {
+            gsap.to(opt, { x: 0, y: 0, duration: 0.8, ease: "elastic.out(1, 0.3)" });
+        });
+      });
+    }
+  }, { dependencies: [hasStarted], scope: examContainerRef });
 
   const duration = state.examData?.duration || 60;
   const questions = state.examData?.questions || [];
 
-  /* ── Capture Snapshot Helper (Moved Up) ── */
   const lastGoodSnap = useRef({ webcam: null, screen: null });
   const captureSnapshot = useCallback(() => {
       const snap = { webcam: null, screen: null };
       try {
-          // readyState >= 2 means HAVE_CURRENT_DATA - enough for a screenshot
           if (videoRef.current && videoRef.current.readyState >= 2) {
               const canvas = document.createElement('canvas');
               canvas.width = 640; canvas.height = 480;
@@ -60,7 +87,7 @@ const Exam = () => {
               snap.webcam = canvas.toDataURL('image/jpeg', 0.85);
               lastGoodSnap.current.webcam = snap.webcam;
           } else {
-              snap.webcam = lastGoodSnap.current.webcam; // Use last known good
+              snap.webcam = lastGoodSnap.current.webcam;
           }
       } catch (e) {
           console.warn('Webcam capture failed:', e);
@@ -83,16 +110,13 @@ const Exam = () => {
       return snap;
   }, []);
 
-  /* ── Resume Logic ── */
   useEffect(() => {
-    // If we have exam data but inactive state (refresh), resume.
     if (!state.isExamActive && state.examData && state.examId) {
         dispatch({ type: 'RESUME_EXAM' });
         setHasStarted(true);
     }
   }, [state.examData, state.examId, state.isExamActive]);
 
-  /* ── Countdown Timer ── */
   useEffect(() => {
       if (!hasStarted) return;
       setTimeLeft(duration * 60);
@@ -118,50 +142,39 @@ const Exam = () => {
 
   const timeIsLow = timeLeft !== null && timeLeft < 120;
 
-  /* ── Socket & Proctoring ── */
   useEffect(() => {
-    // Debug: Log connection attempt
-    const userId = user?._id || user?.id;
-    console.log("Exam.jsx: Checking join-exam conditions", { 
-        isActive: state.isExamActive, 
-        userId: userId,
-        examId: state.examId,
-        socketConnected: socket.connected
-    });
-
+      const userId = user?._id || user?.id;
       if (state.isExamActive && userId && state.examId) {
-          console.log("Exam.jsx: Joining exam room AND monitor room...");
           socket.emit('join-exam', state.examId, userId);
           
-              socket.on('remote-command', ({ action, payload }) => {
-                  if (action === 'terminate') {
-                      dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: "Your exam has been ENDED by the proctor." });
-                      const snap = captureSnapshot();
-                      dispatch({ 
-                          type: 'ADD_WARNING', 
-                          payload: { 
-                              reason: 'Exam Terminated by Proctor', 
-                              time: new Date().toLocaleTimeString(), 
-                              timestamp: new Date(), 
-                              evidence: snap.webcam 
-                          } 
-                      });
-                      // Allow state to update and modal to show before submitting
-                      setTimeout(() => confirmSubmit('proctor_terminated'), 2000); 
-                  }
-                  if (action === 'warn') {
-                      const msg = 'Proctor Warning: ' + payload;
-                      dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: msg });
-                      dispatch({ 
-                          type: 'ADD_WARNING', 
-                          payload: { 
-                              reason: msg, 
-                              time: new Date().toLocaleTimeString(), 
-                              timestamp: new Date() 
-                          } 
-                      });
-                  }
-              });
+          socket.on('remote-command', ({ action, payload }) => {
+              if (action === 'terminate') {
+                  dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: "Your exam has been ENDED by the proctor." });
+                  const snap = captureSnapshot();
+                  dispatch({ 
+                      type: 'ADD_WARNING', 
+                      payload: { 
+                          reason: 'Exam Terminated by Proctor', 
+                          time: new Date().toLocaleTimeString(), 
+                          timestamp: new Date(), 
+                          evidence: snap.webcam 
+                      } 
+                  });
+                  setTimeout(() => confirmSubmit('proctor_terminated'), 2000); 
+              }
+              if (action === 'warn') {
+                  const msg = 'Proctor Warning: ' + payload;
+                  dispatch({ type: 'SET_PROCTOR_MESSAGE', payload: msg });
+                  dispatch({ 
+                      type: 'ADD_WARNING', 
+                      payload: { 
+                          reason: msg, 
+                          time: new Date().toLocaleTimeString(), 
+                          timestamp: new Date() 
+                      } 
+                  });
+              }
+          });
       }
       return () => { socket.off('remote-command'); };
   }, [state.isExamActive, user, state.examId]);
@@ -171,10 +184,7 @@ const Exam = () => {
       const userId = user?._id || user?.id;
       if (state.isExamActive && userId && state.examId) {
         logInterval = setInterval(() => {
-            const snap = captureSnapshot(); // Use the robust capture function
-            console.log("Sending student pulse for exam:", state.examId, { socketConnected: socket.connected });
-            
-            // Force reconnect if needed? No, socket auto-reconnects.
+            const snap = captureSnapshot();
             if (socket.connected) {
                 socket.emit('student-pulse', {
                     examId: state.examId,
@@ -184,8 +194,6 @@ const Exam = () => {
                     screen: snap.screen,
                     violations: state.warnings
                 }); 
-            } else {
-                console.warn("Socket disconnected! Cannot send pulse.");
             }
         }, 3000);
       }
@@ -195,7 +203,7 @@ const Exam = () => {
   const startAssessment = async () => {
       try {
           await document.documentElement.requestFullscreen();
-          dispatch({ type: 'SET_FULLSCREEN', payload: true }); // Optimistic update to prevent overlay flash
+          dispatch({ type: 'SET_FULLSCREEN', payload: true });
           dispatch({ type: 'START_EXAM' });
           setHasStarted(true);
       } catch (err) {
@@ -203,15 +211,13 @@ const Exam = () => {
           alert("Fullscreen mode is required to start the exam.");
       }
   };
+
   useAudioAnalysis(state.streams.webcam, captureSnapshot);
   useDevTools();
-  /* captureSnapshot moved up */
 
-  // Pass captureSnapshot to proctoring hooks so they can grab evidence on violation
   useProctoring({
       captureSnapshot,
       onViolation: (reason, evidence) => {
-          // If evidence wasn't passed (fallback), capture it now
           if (!evidence) evidence = captureSnapshot();
           dispatch({ 
             type: 'ADD_WARNING', 
@@ -242,7 +248,6 @@ const Exam = () => {
   const { modelsLoaded } = useFaceDetection(videoRef, captureSnapshot);
 
   useEffect(() => {
-    // dispatch({ type: 'START_EXAM' }); // Moved to startAssessment
     const attachStreams = () => {
       if (state.streams.webcam && videoRef.current) {
           videoRef.current.srcObject = state.streams.webcam;
@@ -269,7 +274,7 @@ const Exam = () => {
   const handlePrev = () => currentQuestion > 0 && setCurrentQuestion(currentQuestion - 1);
 
   const confirmSubmit = async (reason = 'manual') => {
-      if (typeof reason !== 'string') reason = 'manual'; // Handle event object
+      if (typeof reason !== 'string') reason = 'manual';
 
       if (state.streams.webcam) state.streams.webcam.getTracks().forEach(track => track.stop());
       if (state.streams.screen) state.streams.screen.getTracks().forEach(track => track.stop());
@@ -283,7 +288,7 @@ const Exam = () => {
                   violations: state.violations.map(v => ({ type: v.reason || v.type, timestamp: v.timestamp || new Date(), evidence: v.evidence })),
                   warnings: state.warnings,
                   behavioralData: behavioralLogs,
-                  submissionReason: reason // Send to server too? Useful for backend!
+                  submissionReason: reason
               })
           });
           
@@ -308,26 +313,26 @@ const Exam = () => {
   const progress = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
 
   return (
-    <div className="bg-rf-void min-h-screen flex flex-col overflow-hidden h-screen">
+    <div ref={examContainerRef} className="bg-[#f5f5f7] min-h-screen flex flex-col overflow-hidden h-screen text-text-primary">
         
         {/* Ready Overlay */}
         {!hasStarted && (
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-rf-canvas/95 backdrop-blur-2xl rf-animate-bloom">
-                <div className="rf-card-glass max-w-sm w-full text-center p-8">
-                    <div className="w-14 h-14 rf-glass rounded-xl flex items-center justify-center mx-auto mb-5 border-rf-border-glass">
-                        <Shield size={28} className="text-rf-accent" />
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="card max-w-sm w-full text-center p-8 md:p-10 shadow-2xl">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 border border-border shadow-sm text-primary">
+                        <Shield size={32} />
                     </div>
-                    <h2 className="text-xl font-bold text-rf-text-pure mb-2">Ready to Begin</h2>
-                    <p className="text-sm text-rf-text-dim mb-2 leading-relaxed">
-                        All permissions are set. Your camera and screen will be monitored throughout the exam.
+                    <h2 className="heading-2 mb-2">Ready to Begin</h2>
+                    <p className="text-body mb-6">
+                        All permissions are verified. Your camera and screen will be monitored throughout the exam.
                     </p>
-                    <div className="flex items-center justify-center gap-4 text-xs text-rf-text-muted mb-6 py-3 border-y border-rf-border-glass">
-                        <span>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
-                        <span className="text-rf-text-muted/30">•</span>
-                        <span>{duration} minutes</span>
+                    <div className="flex items-center justify-center gap-4 text-xs font-semibold text-text-secondary uppercase tracking-wider mb-8 py-4 border-y border-border bg-surface">
+                        <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-status-success"/> {questions.length} items</span>
+                        <span className="text-text-tertiary">|</span>
+                        <span className="flex items-center gap-1.5"><Clock size={14} className="text-primary"/> {duration} mins</span>
                     </div>
-                    <button className="rf-btn rf-btn-primary w-full py-3 text-sm font-bold" onClick={startAssessment}>
-                        Start Exam <Maximize2 size={16} className="ml-1" />
+                    <button className="btn btn-primary w-full py-3.5 shadow-md flex justify-center items-center gap-2" onClick={startAssessment}>
+                        Start Assessment <Maximize2 size={16} />
                     </button>
                 </div>
             </div>
@@ -335,24 +340,24 @@ const Exam = () => {
 
         {/* Submit Confirmation Modal */}
         {showSubmitModal && (
-            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-rf-canvas/90 backdrop-blur-xl">
-                <div className="rf-card-glass max-w-sm w-full text-center p-8 rf-animate-bloom">
-                    <div className="w-12 h-12 bg-rf-accent/10 border border-rf-accent/20 rounded-xl flex items-center justify-center mx-auto mb-5 text-rf-accent">
-                        <Send size={22} />
+            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="card max-w-sm w-full text-center p-8 md:p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-5 text-primary">
+                        <Send size={28} />
                     </div>
-                    <h3 className="text-xl font-bold text-rf-text-pure mb-2">Submit Exam?</h3>
-                    <p className="text-sm text-rf-text-dim mb-6 leading-relaxed">
-                        You've answered <span className="text-rf-text-pure font-bold">{answeredCount}</span> of <span className="text-rf-text-pure font-bold">{questions.length}</span> questions. 
-                        This cannot be undone.
+                    <h3 className="heading-2 mb-2">Confirm Submission</h3>
+                    <p className="text-body mb-6">
+                        You have completed <span className="font-bold text-text-primary">{answeredCount}</span> of <span className="font-bold text-text-primary">{questions.length}</span> questions. 
+                        This action is irreversible.
                     </p>
                     {answeredCount < questions.length && (
-                        <div className="flex items-center gap-2 bg-rf-warning/10 border border-rf-warning/20 rounded-lg p-3 mb-4 text-xs text-rf-warning font-semibold">
-                            <AlertTriangle size={14} /> {questions.length - answeredCount} question{questions.length - answeredCount !== 1 ? 's' : ''} unanswered
+                        <div className="flex items-center justify-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-sm text-status-warning font-semibold shadow-sm">
+                            <AlertTriangle size={16} /> {questions.length - answeredCount} question{questions.length - answeredCount !== 1 ? 's' : ''} unanswered
                         </div>
                     )}
-                    <div className="flex gap-3">
-                        <button className="flex-1 rf-btn rf-btn-secondary py-3 !rounded-lg text-sm font-semibold" onClick={() => setShowSubmitModal(false)}>Go Back</button>
-                        <button className="flex-1 rf-btn rf-btn-primary py-3 !rounded-lg text-sm font-semibold" onClick={confirmSubmit}>Submit</button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button className="flex-1 btn btn-secondary py-3" onClick={() => setShowSubmitModal(false)}>Return to Exam</button>
+                        <button className="flex-1 btn btn-primary py-3" onClick={confirmSubmit}>Final Submit</button>
                     </div>
                 </div>
             </div>
@@ -360,94 +365,102 @@ const Exam = () => {
 
         <WarningSystem />
 
-        {/* ═══ Top Bar ═══ */}
-        <header className="rf-exam-hud">
-            <div className="flex items-center gap-3">
-                <div className="rf-glass w-8 h-8 rounded-lg flex items-center justify-center border-rf-border-glass">
-                    <Shield size={16} className="text-rf-accent" />
+        <header className="h-20 bg-white/70 backdrop-blur-2xl border-b border-border/50 flex items-center justify-between px-6 lg:px-10 z-[50] shrink-0">
+            <div className="flex items-center gap-4">
+                <div className="w-11 h-11 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-sm">
+                    <Shield size={22} className="text-primary" />
                 </div>
                 <div>
-                    <p className="text-[9px] font-semibold text-rf-text-muted uppercase tracking-wider leading-none mb-0.5">Proctored Exam</p>
-                    <p className="text-sm font-bold text-rf-text-pure truncate max-w-[250px] leading-tight">{state.examData?.title}</p>
+                    <h1 className="text-base font-bold text-text-primary tracking-tight truncate max-w-[200px] sm:max-w-[300px] leading-tight mb-0.5">{state.examData?.title}</h1>
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-status-success shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                        <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest leading-none">Secured Environment</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6">
                 {/* Progress indicator */}
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-rf-panel/30 border border-rf-border-glass rounded-lg">
-                    <span className="text-[10px] text-rf-text-muted font-semibold">{answeredCount}/{questions.length}</span>
-                    <div className="w-16 h-1.5 bg-rf-panel/60 rounded-full overflow-hidden">
-                        <div className="h-full bg-rf-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="hidden lg:flex items-center gap-4 px-5 py-2 bg-white rounded-[2rem] border border-border/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                    <span className="text-[11px] text-text-secondary font-bold tracking-tighter">{progress}% COMPLETE</span>
+                    <div className="w-32 h-1.5 bg-panel rounded-full overflow-hidden border border-border/20">
+                        <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
                     </div>
                 </div>
 
                 {/* Timer */}
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm font-bold ${timeIsLow ? 'bg-rf-danger/10 border-rf-danger/30 text-rf-danger' : 'bg-rf-panel/40 border-rf-border-glass text-rf-text-pure'}`}>
-                    <Clock size={14} className={timeIsLow ? 'text-rf-danger animate-pulse' : 'text-rf-accent'} />
-                    {formatTime(timeLeft)}
+                <div className={`flex items-center gap-2.5 px-5 py-2 rounded-[2rem] border-2 font-bold tracking-tight transition-all duration-300 ${timeIsLow ? 'bg-red-50 border-red-200 text-status-danger shadow-sm scale-105' : 'bg-white border-border/60 text-text-primary'}`}>
+                    <Clock size={18} className={timeIsLow ? 'animate-pulse' : 'text-text-tertiary'} />
+                    <span className="font-mono text-lg leading-none">{formatTime(timeLeft)}</span>
                 </div>
 
                 {/* Submit button */}
-                <button className="rf-btn rf-btn-primary py-1.5 px-4 text-xs font-bold gap-1" onClick={() => setShowSubmitModal(true)}>
-                    Submit <Send size={12} />
+                <button className="btn btn-primary h-11 px-6 rounded-[2rem] shadow-lg shadow-primary/10 hover:shadow-primary/20 active:scale-95 transition-all text-sm font-bold flex items-center gap-2" onClick={() => setShowSubmitModal(true)}>
+                    <span>Finish Session</span>
+                    <Send size={14} className="opacity-70" />
                 </button>
             </div>
         </header>
 
         {/* ═══ Body: Main + Sidebar ═══ */}
-        <div className="rf-exam-body">
+        <div className="flex-1 flex overflow-hidden">
             
             {/* ── Question Area ── */}
-            <main className="rf-exam-main p-4">
-                <div className="rf-card-glass p-5 flex flex-col h-full overflow-hidden">
+            <main className="flex-1 p-6 lg:p-10 overflow-y-auto custom-scrollbar">
+                <div className="bg-white rounded-[2.5rem] h-full min-h-[500px] flex flex-col p-10 shadow-[0_10px_50px_rgba(0,0,0,0.03)] border border-border/40 exam-fade-in transition-all duration-500">
                     {/* Question Header */}
-                    <div className="mb-4 pb-3 border-b border-rf-border-glass">
-                        <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs font-bold text-rf-accent">
-                                Question {currentQuestion + 1} <span className="text-rf-text-muted font-normal">of {questions.length}</span>
-                            </p>
+                    <div className="mb-6 pb-4 border-b border-border">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">
+                                Question {currentQuestion + 1} <span className="text-text-tertiary font-medium">/ {questions.length}</span>
+                            </h2>
                             {answers[currentQuestion] && (
-                                <span className="flex items-center gap-1 text-[10px] text-rf-success font-bold">
-                                    <CheckCircle2 size={11} /> Answered
+                                <span className="flex items-center gap-1.5 text-xs text-status-success font-bold bg-green-50 px-2.5 py-1 rounded-md border border-green-200">
+                                    <CheckCircle2 size={14} /> Recorded
                                 </span>
                             )}
                         </div>
-                        <h2 className="text-base font-bold text-rf-text-pure leading-snug">
+                        <h3 className="heading-2 leading-relaxed max-w-4xl text-text-primary">
                             {questions[currentQuestion]?.text}
-                        </h2>
+                        </h3>
                     </div>
 
                     {/* Answer Area */}
-                    <div className="flex-1 overflow-y-auto mb-4 pr-1 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto mb-10 pr-4 custom-scrollbar">
                         {questions[currentQuestion]?.type === 'coding' ? (
-                            <div className="h-[450px]">
+                            <div className="h-full min-h-[400px] rounded-3xl overflow-hidden border border-border/60">
                                 <CodeEditor 
                                     question={questions[currentQuestion]} 
                                     onCodeChange={(code) => handleOptionSelect(code)}
                                 />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-4 max-w-4xl">
                                 {questions[currentQuestion]?.options?.map((option, idx) => (
                                     <div 
                                         key={idx}
                                         onClick={() => handleOptionSelect(option)}
-                                        className={`flex items-center gap-3 p-3.5 rounded-xl transition-all duration-200 cursor-pointer border ${
+                                        className={`magnetic-option flex items-center gap-5 p-6 rounded-2xl transition-all duration-300 cursor-pointer border-2 ${
                                             answers[currentQuestion] === option 
-                                            ? 'bg-rf-accent/10 border-rf-accent/40' 
-                                            : 'bg-rf-panel/20 border-rf-border-glass hover:bg-rf-panel/40 hover:border-rf-accent/20'
+                                            ? 'bg-primary shadow-[0_10px_25px_rgba(37,99,235,0.1)] border-primary transform scale-[1.01]' 
+                                            : 'bg-white border-border/80 hover:bg-surface hover:border-text-tertiary shadow-sm'
                                         }`}
                                     >
-                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                        <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all duration-300 ${
                                             answers[currentQuestion] === option 
-                                            ? 'border-rf-accent bg-rf-accent' 
-                                            : 'border-rf-text-muted'
+                                            ? 'border-white/40 bg-white/20' 
+                                            : 'border-border bg-background'
                                         }`}>
-                                            {answers[currentQuestion] === option && <CheckCircle2 size={10} className="text-white" />}
+                                            <span className={`text-xs font-bold ${answers[currentQuestion] === option ? 'text-white' : 'text-text-tertiary'}`}>
+                                                {String.fromCharCode(65 + idx)}
+                                            </span>
                                         </div>
-                                        <span className={`text-sm ${
-                                            answers[currentQuestion] === option ? 'text-rf-text-pure font-medium' : 'text-rf-text-dim'
+                                        <span className={`text-lg transition-colors duration-300 ${
+                                            answers[currentQuestion] === option ? 'text-white font-bold' : 'text-text-secondary font-medium'
                                         }`}>{option}</span>
+                                        {answers[currentQuestion] === option && (
+                                            <Zap size={14} className="ml-auto text-white/60 animate-pulse" />
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -455,84 +468,110 @@ const Exam = () => {
                     </div>
 
                     {/* Navigation */}
-                    <div className="flex items-center justify-between pt-3 border-t border-rf-border-glass mt-auto">
-                        <button className="rf-btn rf-btn-secondary !px-4 !py-2 !rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-30" onClick={handlePrev} disabled={currentQuestion === 0}>
-                            <ChevronLeft size={14} /> Previous
+                    <div className="flex items-center justify-between pt-8 border-t border-border/50 mt-auto">
+                        <button className="btn btn-secondary h-12 px-6 rounded-2xl flex items-center gap-2 hover:bg-white hover:border-text-tertiary transition-all disabled:opacity-30 disabled:pointer-events-none" onClick={handlePrev} disabled={currentQuestion === 0}>
+                            <ChevronLeft size={20} /> <span className="font-bold text-sm">Previous</span>
                         </button>
-                        <span className="text-[10px] text-rf-text-muted font-semibold">
-                            {currentQuestion + 1} / {questions.length}
-                        </span>
+                        
+                        {/* Pagination Dots */}
+                        <div className="hidden sm:flex items-center gap-2 px-6 py-2 bg-surface rounded-[2rem] border border-border/40">
+                            {questions.map((_, idx) => {
+                                if (questions.length > 10 && Math.abs(idx - currentQuestion) > 2 && idx !== 0 && idx !== questions.length - 1) {
+                                    if (idx === 1 || idx === questions.length - 2) return <span key={idx} className="text-text-tertiary text-[8px] leading-none">••</span>;
+                                    return null;
+                                }
+                                return (
+                                    <div 
+                                        key={idx} 
+                                        onClick={() => setCurrentQuestion(idx)}
+                                        className={`w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-500 ease-spring ${
+                                            idx === currentQuestion ? 'bg-primary w-8' : answers[idx] ? 'bg-status-success scale-75' : 'bg-border/60 hover:bg-text-tertiary scale-75'
+                                        }`} 
+                                    />
+                                );
+                            })}
+                        </div>
+                        
                         <button 
-                            className={`rf-btn !px-4 !py-2 !rounded-lg text-xs font-semibold flex items-center gap-1 ${currentQuestion === questions.length - 1 ? 'rf-btn-primary' : 'rf-btn-secondary'}`} 
+                            className={`btn h-12 px-10 rounded-2xl flex items-center gap-2 shadow-lg transition-all active:scale-95 ${currentQuestion === questions.length - 1 ? 'btn-primary shadow-primary/20' : 'btn-secondary bg-white border-border hover:border-text-tertiary'}`} 
                             onClick={currentQuestion === questions.length - 1 ? () => setShowSubmitModal(true) : handleNext}
                         >
-                            {currentQuestion === questions.length - 1 ? 'Finish' : 'Next'} <ChevronRight size={14} />
+                            <span className="font-bold text-sm">{currentQuestion === questions.length - 1 ? 'Complete Session' : 'Next Question'}</span> <ChevronRight size={20} />
                         </button>
                     </div>
                 </div>
             </main>
 
             {/* ── Sidebar ── */}
-            <aside className="rf-exam-sidebar bg-rf-surface/50 border-l border-rf-border-glass p-3 gap-3">
+            <aside className="w-[80px] lg:w-[320px] bg-white border-l border-border/50 p-4 lg:p-6 flex flex-col gap-6 overflow-y-auto shrink-0 z-10 relative">
+                
                 {/* Camera Feed */}
-                <div className="mb-3">
-                    <div className="aspect-video rf-card-glass !p-0 !rounded-lg relative overflow-hidden">
-                        <video ref={videoRef} autoPlay muted className="w-full h-full object-cover" />
+                <div className="hidden lg:block login-stagger">
+                    <div className="aspect-video bg-black rounded-3xl border border-black relative overflow-hidden shadow-2xl group">
+                        <video ref={videoRef} autoPlay muted className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100" />
                         <video ref={screenRef} autoPlay muted style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />
-                        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 bg-rf-canvas/80 backdrop-blur-md rounded-full border border-rf-border-glass">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rf-danger animate-pulse" />
-                            <span className="text-[8px] font-bold text-rf-text-pure">LIVE</span>
+                        <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 bg-black/40 backdrop-blur-xl rounded-full border border-white/20">
+                            <div className="w-2 h-2 rounded-full bg-status-danger animate-[pulse_1s_infinite] shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                            <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">Live Proctor</span>
                         </div>
                     </div>
-                    <p className="text-[9px] text-center text-rf-text-muted mt-1">Camera Feed</p>
                 </div>
 
                 {/* Monitoring Status */}
-                <div className="rf-card-glass !p-3 bg-rf-panel/20 mb-3">
-                    <p className="text-[9px] font-bold text-rf-text-muted uppercase tracking-wider mb-2">Monitoring</p>
-                    <div className="space-y-2">
-                        <StatusLine icon={<Video size={12}/>} label="Camera" active={modelsLoaded} />
-                        <StatusLine icon={<MonitorIcon size={12}/>} label="Screen" active={state.streams.screen !== null} />
-                        <StatusLine icon={<Eye size={12}/>} label="Tab Tracking" active={true} />
+                <div className="hidden lg:block card p-3.5 shadow-sm bg-surface border-border">
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-3">System Monitoring</p>
+                    <div className="space-y-2.5">
+                        <StatusLine icon={<Video size={14}/>} label="Webcam" active={modelsLoaded} />
+                        <StatusLine icon={<MonitorIcon size={14}/>} label="Screen" active={state.streams.screen !== null} />
+                        <StatusLine icon={<Eye size={14}/>} label="Focus Sync" active={true} />
                     </div>
+                </div>
+                
+                {/* Responsive Monitoring Icons (Mobile) */}
+                <div className="lg:hidden flex flex-col items-center gap-4 mt-2 mb-4">
+                    <div className={`p-2 rounded-full border ${modelsLoaded ? 'bg-green-50 text-status-success border-green-200' : 'bg-red-50 text-status-danger border-red-200'}`}><Video size={16}/></div>
+                    <div className={`p-2 rounded-full border ${state.streams.screen ? 'bg-green-50 text-status-success border-green-200' : 'bg-red-50 text-status-danger border-red-200'}`}><MonitorIcon size={16}/></div>
                 </div>
 
                 {/* Warnings */}
                 {state.warnings > 0 && (
-                    <div className="rf-card-glass !p-3 bg-rf-danger/5 border-rf-danger/20 mb-3">
-                        <div className="flex items-center justify-between">
+                    <div className="card p-3 border-status-danger/40 bg-red-50 ring-2 ring-status-danger/10 mb-2">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-1">
                             <div className="flex items-center gap-1.5">
-                                <AlertTriangle size={12} className="text-rf-danger" />
-                                <span className="text-[10px] font-bold text-rf-danger">Warnings</span>
+                                <AlertTriangle size={14} className="text-status-danger shrink-0" />
+                                <span className="hidden lg:inline text-xs font-bold text-status-danger uppercase tracking-wider">Alerts</span>
                             </div>
-                            <span className="text-sm font-bold text-rf-danger">{state.warnings}<span className="text-[10px] text-rf-text-muted font-normal"> / {state.maxWarnings}</span></span>
+                            <span className="text-lg text-center lg:text-left font-bold text-status-danger leading-none">{state.warnings}<span className="text-xs text-status-danger/50 font-medium">/{state.maxWarnings}</span></span>
                         </div>
                     </div>
                 )}
 
                 {/* Question Navigator */}
-                <div>
-                    <p className="text-[9px] font-bold text-rf-text-muted uppercase tracking-wider mb-2">Questions</p>
-                    <div className="rf-index-grid bg-rf-panel/20 p-2 rounded-lg border border-rf-border-glass">
-                        {questions.map((_, i) => (
-                            <button 
-                                key={i}
-                                onClick={() => setCurrentQuestion(i)}
-                                className={`w-full aspect-square flex items-center justify-center rounded-md text-[10px] font-bold transition-all relative ${
-                                    i === currentQuestion 
-                                    ? 'bg-rf-accent text-white shadow-sm' 
-                                    : answers[i]
-                                    ? 'bg-rf-success/10 text-rf-success border border-rf-success/30'
-                                    : 'bg-rf-panel/40 text-rf-text-muted border border-rf-border-glass hover:text-rf-text-pure'
-                                }`}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
+                <div className="flex-1 flex flex-col min-h-0">
+                    <p className="hidden lg:block text-[10px] font-bold text-text-tertiary uppercase tracking-wider mb-3">Index</p>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 bg-surface lg:bg-transparent rounded-xl p-2 lg:p-0 border border-border lg:border-none shadow-inner lg:shadow-none">
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
+                            {questions.map((_, i) => (
+                                <button 
+                                    key={i}
+                                    onClick={() => setCurrentQuestion(i)}
+                                    className={`w-full aspect-square flex items-center justify-center rounded-lg text-xs font-bold transition-all border shadow-sm ${
+                                        i === currentQuestion 
+                                        ? 'bg-primary border-primary text-white ring-2 ring-primary/20' 
+                                        : answers[i]
+                                        ? 'bg-green-50 text-status-success border-green-200 hover:bg-green-100 hover:border-status-success'
+                                        : 'bg-white text-text-secondary border-border hover:border-text-tertiary hover:bg-surface'
+                                    }`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-[9px] text-rf-text-muted px-0.5">
-                        <span className="flex items-center gap-1"><div className="w-2 h-2 bg-rf-success/20 border border-rf-success/40 rounded-sm" /> Answered</span>
-                        <span className="flex items-center gap-1"><div className="w-2 h-2 bg-rf-panel/40 border border-rf-border-glass rounded-sm" /> Pending</span>
+                    {/* Legend */}
+                    <div className="hidden lg:flex items-center justify-between mt-4 p-3 bg-surface border border-border rounded-lg shadow-sm">
+                        <span className="flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider"><div className="w-2.5 h-2.5 bg-status-success border border-status-success rounded" /> Done</span>
+                        <span className="flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider"><div className="w-2.5 h-2.5 bg-white border border-border rounded" /> Empty</span>
                     </div>
                 </div>
             </aside>
@@ -543,14 +582,13 @@ const Exam = () => {
 
 /* Status indicator */
 const StatusLine = ({ icon, label, active }) => (
-    <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[11px] text-rf-text-silver font-medium">
-            <span className={active ? 'text-rf-accent' : 'text-rf-text-dim'}>{icon}</span>
-            {label}
+    <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-border/80 shadow-sm transition-all hover:border-primary/30 group">
+        <div className="flex items-center gap-3 text-xs font-semibold">
+            <span className={`transition-colors duration-300 ${active ? 'text-primary' : 'text-text-tertiary group-hover:text-text-secondary'}`}>{icon}</span>
+            <span className="text-text-primary tracking-tight">{label}</span>
         </div>
-        <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-rf-success' : 'bg-rf-danger'}`} />
-            <span className={`text-[8px] font-bold ${active ? 'text-rf-success' : 'text-rf-danger'}`}>{active ? 'ON' : 'OFF'}</span>
+        <div className={`px-2.5 py-1 rounded-md text-[9px] font-black tracking-widest border transition-all duration-300 ${active ? 'bg-green-50 text-status-success border-green-200 shadow-[0_0_10px_rgba(34,197,94,0.1)]' : 'bg-red-50 text-status-danger border-red-200'}`}>
+            {active ? 'ACTIVE' : 'IDLE'}
         </div>
     </div>
 );

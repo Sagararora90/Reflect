@@ -9,13 +9,20 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check for token on load
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user'); // Basic user info
-    
-    if (token && savedUser) {
-        setUser(JSON.parse(savedUser));
+    try {
+        const token = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user'); // Basic user info
+        
+        if (token && savedUser && savedUser !== 'undefined') {
+            setUser(JSON.parse(savedUser));
+        }
+    } catch (e) {
+        console.error("Local storage parsing error:", e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = async (email, password) => {

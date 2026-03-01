@@ -7,67 +7,48 @@ export default {
   theme: {
     extend: {
       colors: {
-        rf: {
-          canvas: '#0A0C10',    // Deep Dark Background (Void)
-          surface: '#12151C',   // Card/Panel Background (Charcoal)
-          panel: '#1E232E',     // Subtle Secondary Surface
-          
-          // Primary Actions (Electric Blue)
-          accent: '#3B82F6',    
-          'accent-muted': '#2563EB',
-          'accent-light': '#60A5FA',
-          'accent-glow': 'rgba(59, 130, 246, 0.2)',
-          'accent-bloom': 'rgba(59, 130, 246, 0.08)',
-          
-          // Feedback
-          success: '#10B981',
-          warning: '#F59E0B',
-          danger: '#EF4444',
-          
-          // Text (Optimized for Dark Mode)
-          text: {
-            pure: '#F8FAFC',    // Pearl White (High Contrast)
-            silver: '#E2E8F0',  // Light Slate
-            dim: '#94A3B8',     // Muted Blue-Gray
-            muted: '#64748B',   // Darker Blue-Gray
-          },
+        background: '#F8FAFC', // Slate 50
+        surface: '#FFFFFF',
+        panel: '#F1F5F9', // Slate 100
+        
+        primary: {
+          DEFAULT: '#4338CA', // Indigo 700
+          hover: '#3730A3', // Indigo 800
+          light: '#EEF2FF', // Indigo 50
+        },
+        
+        text: {
+          primary: '#0F172A', // Slate 900
+          secondary: '#475569', // Slate 600
+          tertiary: '#94A3B8', // Slate 400
+        },
+        
+        border: {
+          DEFAULT: '#E2E8F0', // Slate 200
+          light: '#F1F5F9', // Slate 100
+        },
 
-          // Borders & Glass (Dark Mode optimized)
-          'border-glass': 'rgba(255, 255, 255, 0.06)',
-          'border-light': 'rgba(255, 255, 255, 0.1)',
-          'border-accent': 'rgba(59, 130, 246, 0.2)',
-          'glass-crystal': 'rgba(18, 21, 28, 0.7)',
+        status: {
+          success: '#10B981', // Emerald 500
+          warning: '#F59E0B', // Amber 500
+          danger: '#EF4444', // Red 500
+          info: '#3B82F6', // Blue 500
         }
-      },
-      backdropBlur: {
-        xs: '2px',
-        '3xl': '64px',
-      },
-      borderRadius: {
-        'rf-sm': '12px',
-        'rf-md': '16px',
-        'rf-lg': '24px',
       },
       boxShadow: {
-        'rf-sm': '0 2px 8px rgba(0, 0, 0, 0.2)',
-        'rf-md': '0 8px 16px -4px rgba(0, 0, 0, 0.4)',
-        'rf-lg': '0 20px 48px -12px rgba(0, 0, 0, 0.6)',
-        'rf-crystal': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
-        'rf-accent': '0 4px 14px 0 rgba(59, 130, 246, 0.3)',
-        'rf-accent-glow': '0 0 20px rgba(59, 130, 246, 0.4)',
-        'rf-input-focus': '0 0 0 4px rgba(59, 130, 246, 0.15)',
-        'rf-btn-primary': '0 4px 12px rgba(59, 130, 246, 0.25)',
-        'rf-btn-primary-hover': '0 8px 24px rgba(59, 130, 246, 0.4)',
+        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'DEFAULT': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'focus': '0 0 0 3px rgba(67, 56, 202, 0.2)', // Primary colored focus ring
       },
-
-      animation: {
-        'bloom': 'bloom 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      borderRadius: {
+        'xl': '0.75rem',
+        '2xl': '1rem',
       },
-      keyframes: {
-        bloom: {
-          '0%': { opacity: '0', transform: 'scale(0.98) translateY(10px)', filter: 'blur(10px)' },
-          '100%': { opacity: '1', transform: 'scale(1) translateY(0)', filter: 'blur(0)' },
-        }
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
       }
     },
   },

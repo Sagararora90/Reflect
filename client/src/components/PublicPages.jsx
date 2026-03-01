@@ -2,23 +2,17 @@ import React from 'react';
 import { Shield, Zap, Globe, Database, ArrowRight, CheckCircle2, Star, Users, Sparkles, Terminal } from 'lucide-react';
 
 const PageLayout = ({ title, subtitle, children, icon: Icon }) => (
-    <div className="min-h-screen bg-rf-canvas pt-40 pb-24 px-8 relative overflow-hidden selection:bg-rf-accent/30 rf-animate-bloom">
-        {/* Ambient background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-rf-accent/5 blur-[150px] -z-10 opacity-30" />
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-rf-accent/10 blur-[120px] -z-10 opacity-10" />
-        
+    <div className="min-h-screen bg-background pt-32 pb-24 px-6 sm:px-8 selection:bg-primary/20">
         <div className="max-w-7xl mx-auto text-center">
             {Icon && (
-                <div className="inline-flex p-4 bg-rf-accent/10 border border-rf-border-accent rounded-2xl mb-10 shadow-rf-accent/20">
-                    <Icon size={32} className="text-rf-accent-light" />
+                <div className="inline-flex p-3 bg-white border border-border rounded-xl mb-8 shadow-sm">
+                    <Icon size={28} className="text-primary" />
                 </div>
             )}
-            <h1 className="text-5xl md:text-8xl font-black text-rf-text-pure mb-8 tracking-tighter">
-                <span className="rf-text-gradient">
-                    {title}
-                </span>
+            <h1 className="heading-1 md:text-5xl lg:text-7xl mb-6">
+                {title}
             </h1>
-            <p className="text-rf-text-dim text-lg md:text-xl font-medium max-w-2xl mx-auto mb-20 leading-relaxed">
+            <p className="text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mb-16 leading-relaxed">
                 {subtitle}
             </p>
             
@@ -36,28 +30,28 @@ export const Product = () => (
         icon={Zap}
     >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
-             <div className="rf-card-glass group p-8 md:p-12 hover:border-rf-accent/40 transition-all duration-500">
-                <div className="w-14 h-14 bg-rf-accent/10 border border-rf-border-accent rounded-xl flex items-center justify-center mb-10 group-hover:scale-110 transition-transform text-rf-accent">
-                    <Terminal size={28} />
+             <div className="card p-8 md:p-12 hover:border-primary transition-colors">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-8 text-primary">
+                    <Terminal size={24} />
                 </div>
-                <h3 className="text-3xl font-black text-rf-text-pure mb-6 tracking-tight uppercase tracking-widest leading-tight">Logic Workspace</h3>
-                <p className="text-rf-text-dim leading-relaxed mb-10 font-medium text-lg">Support for 40+ languages including Python, Java, and C++. Optimized for low-latency compilation and deep test case validation.</p>
-                <div className="flex gap-3">
+                <h3 className="heading-3 mb-4">Logic Workspace</h3>
+                <p className="text-text-secondary leading-relaxed mb-8">Support for 40+ languages including Python, Java, and C++. Optimized for low-latency compilation and deep test case validation.</p>
+                <div className="flex gap-2 flex-wrap">
                     {['v8', 'LLVM', 'Clang'].map(t => (
-                        <span key={t} className="px-4 py-2 bg-rf-accent/5 border border-rf-border-glass rounded-xl text-[10px] font-black text-rf-text-muted uppercase tracking-widest">{t}</span>
+                        <span key={t} className="badge badge-neutral">{t}</span>
                     ))}
                 </div>
              </div>
              
-             <div className="rf-card-glass group p-8 md:p-12 hover:border-rf-accent/40 transition-all duration-500">
-                <div className="w-14 h-14 bg-rf-accent/10 border border-rf-border-accent rounded-xl flex items-center justify-center mb-10 group-hover:scale-110 transition-transform text-rf-accent">
-                    <Shield size={28} />
+             <div className="card p-8 md:p-12 hover:border-primary transition-colors">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-8 text-primary">
+                    <Shield size={24} />
                 </div>
-                <h3 className="text-3xl font-black text-rf-text-pure mb-6 tracking-tight uppercase tracking-widest leading-tight">Watcher_v2</h3>
-                <p className="text-rf-text-dim leading-relaxed mb-10 font-medium text-lg">Advanced biometric mapping, gaze estimation, and neural environment capture. Ensuring session integrity at the micro-level.</p>
-                <div className="flex gap-3">
+                <h3 className="heading-3 mb-4">Watcher_v2</h3>
+                <p className="text-text-secondary leading-relaxed mb-8">Advanced biometric mapping, gaze estimation, and neural environment capture. Ensuring session integrity at the micro-level.</p>
+                <div className="flex gap-2 flex-wrap">
                     {['TensorFlow', 'MediaPipe', 'E2E'].map(t => (
-                        <span key={t} className="px-4 py-2 bg-rf-accent/5 border border-rf-border-glass rounded-xl text-[10px] font-black text-rf-text-muted uppercase tracking-widest">{t}</span>
+                        <span key={t} className="badge badge-neutral">{t}</span>
                     ))}
                 </div>
              </div>
@@ -71,16 +65,15 @@ export const Security = () => (
         subtitle="Our infrastructure is designed for the most demanding security requirements, with zero-trust architecture at its core."
         icon={Shield}
     >
-         <div className="rf-card-glass !p-16 text-center relative overflow-hidden group border-rf-border-glass">
-            <div className="absolute top-0 left-0 w-full h-1 bg-rf-accent shadow-rf-accent-glow" />
-            <h2 className="text-4xl md:text-5xl font-black text-rf-text-pure mb-8 uppercase tracking-tight leading-tight">SOC2 Type II Foundation</h2>
-            <p className="text-rf-text-dim text-xl mb-14 max-w-3xl mx-auto font-medium leading-relaxed">We adhere to the strictest data privacy and security standards. Every bit of session data is encrypted with AES-256 and transitioned via secure TLS channels.</p>
+         <div className="card !p-12 md:!p-16 text-center border-t-4 border-t-primary">
+            <h2 className="heading-2 mb-6">SOC2 Type II Foundation</h2>
+            <p className="text-text-secondary text-lg mb-12 max-w-3xl mx-auto leading-relaxed">We adhere to the strictest data privacy and security standards. Every bit of session data is encrypted with AES-256 and transitioned via secure TLS channels.</p>
             
-            <div className="flex flex-wrap gap-8 justify-center">
-                {['GDPR_COMPLIANT', 'ISO_27001', 'SSL_E2E', 'AES_256'].map(cert => (
-                    <div key={cert} className="flex items-center gap-4 rf-glass px-8 py-4 border-rf-border-glass hover:border-rf-accent/50 transition-all duration-500 shadow-lg">
-                        <CheckCircle2 size={20} className="text-rf-success" />
-                        <span className="text-[11px] font-black text-rf-text-pure uppercase tracking-[0.3em]">{cert}</span>
+            <div className="flex flex-wrap gap-4 justify-center">
+                {['GDPR COMPLIANT', 'ISO 27001', 'SSL E2E', 'AES 256'].map(cert => (
+                    <div key={cert} className="flex items-center gap-3 bg-panel px-6 py-3 rounded-lg border border-border">
+                        <CheckCircle2 size={18} className="text-status-success" />
+                        <span className="text-sm font-semibold text-text-primary tracking-wide">{cert}</span>
                     </div>
                 ))}
             </div>
@@ -94,7 +87,7 @@ export const Pricing = () => (
         subtitle="Transparent pricing designed for organizations scaling their technical hiring pipelines."
         icon={Zap}
     >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {[
                 { name: 'Starter', price: '0', icon: Database, featured: false },
                 { name: 'Growth', price: '49', icon: Sparkles, featured: true },
@@ -102,33 +95,33 @@ export const Pricing = () => (
             ].map((plan) => (
                 <div 
                     key={plan.name} 
-                    className={`rf-card-glass !p-12 flex flex-col items-center text-center group transition-all duration-500 hover:-translate-y-2 border-rf-border-glass ${plan.featured ? '!border-rf-accent/40 bg-rf-accent/5 shadow-rf-accent/10' : ''}`}
+                    className={`card !p-10 flex flex-col items-center text-center transition-all ${plan.featured ? 'border-primary ring-1 ring-primary shadow-md' : 'hover:border-primary/50'}`}
                 >
-                    <div className={`p-5 rounded-3xl mb-10 border transition-all duration-500 ${plan.featured ? 'bg-rf-accent border-rf-accent shadow-rf-accent text-white' : 'rf-glass border-rf-border-glass text-rf-accent group-hover:bg-rf-accent group-hover:text-white group-hover:shadow-rf-accent'}`}>
-                        <plan.icon size={28} />
+                    <div className={`p-4 rounded-xl mb-8 ${plan.featured ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
+                        <plan.icon size={24} />
                     </div>
-                    <h3 className="text-3xl font-black text-rf-text-pure mb-3 uppercase tracking-tight">{plan.name}</h3>
-                    <div className="flex items-baseline gap-1 mb-12">
-                        <span className="text-5xl font-black text-rf-text-pure tracking-tighter leading-none">{plan.price === 'Custom' ? '' : '$'}{plan.price}</span>
-                        {plan.price !== 'Custom' && <span className="text-[11px] font-black text-rf-text-muted uppercase tracking-[0.2em] ml-2">/ Node</span>}
+                    <h3 className="heading-3 mb-2">{plan.name}</h3>
+                    <div className="flex items-baseline gap-1 mb-8">
+                        <span className="text-4xl font-bold text-text-primary">{plan.price === 'Custom' ? '' : '$'}{plan.price}</span>
+                        {plan.price !== 'Custom' && <span className="text-sm font-semibold text-text-secondary">/ user / mo</span>}
                     </div>
                     
-                    <ul className="space-y-5 mb-14 text-left w-full">
+                    <ul className="space-y-4 mb-10 text-left w-full border-t border-border pt-8">
                         {[
                             'Up to 100 Candidates',
                             'Biometric Watcher',
                             'Neural Runtime capture',
                             'E2E Security Handshake'
                         ].map(feature => (
-                            <li key={feature} className="flex items-center gap-4 text-sm font-bold text-rf-text-dim group-hover:text-rf-text-silver transition-colors">
-                                <CheckCircle2 size={16} className="text-rf-success shrink-0" />
-                                <span className="uppercase tracking-widest">{feature}</span>
+                            <li key={feature} className="flex items-center gap-3 text-sm text-text-secondary">
+                                <CheckCircle2 size={16} className="text-primary shrink-0" />
+                                <span>{feature}</span>
                             </li>
                         ))}
                     </ul>
                     
-                    <button className={`rf-btn w-full py-5 !rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all ${plan.featured ? 'rf-btn-primary shadow-rf-btn-primary' : 'rf-btn-secondary'}`}>
-                        Initialize {plan.name} <ArrowRight size={18} />
+                    <button className={`btn w-full mt-auto ${plan.featured ? 'btn-primary' : 'btn-secondary'}`}>
+                        Choose {plan.name}
                     </button>
                 </div>
             ))}
@@ -138,26 +131,25 @@ export const Pricing = () => (
 
 export const Enterprise = () => (
     <PageLayout 
-        title="Neural_Grid" 
+        title="Enterprise Connect" 
         subtitle="For large-scale universities and global corporations requiring custom logic and deep LMS integration."
         icon={Globe}
     >
-         <div className="rf-card-glass !p-16 flex flex-col lg:grid lg:grid-cols-2 items-center justify-between gap-16 relative overflow-hidden border-rf-border-glass">
-            <div className="absolute top-0 right-0 w-full h-full bg-rf-accent/5 blur-[150px] -z-10" />
+         <div className="card !p-12 md:!p-16 flex flex-col lg:grid lg:grid-cols-2 items-center justify-between gap-12 bg-surface border-border">
             
             <div className="text-left">
-                <h2 className="text-5xl font-black text-rf-text-pure mb-8 uppercase tracking-tight leading-none">LMS Deep_Sync</h2>
-                <p className="text-rf-text-dim text-xl leading-relaxed mb-10 font-medium">We integrate directly with your learning ecosystem (Canvas, Blackboard, Moodle) to provide zero-friction automated deployments.</p>
-                <div className="flex flex-wrap gap-4">
+                <h2 className="heading-2 mb-4">LMS Deep Sync</h2>
+                <p className="text-text-secondary text-lg leading-relaxed mb-8">We integrate directly with your learning ecosystem (Canvas, Blackboard, Moodle) to provide zero-friction automated deployments.</p>
+                <div className="flex flex-wrap gap-3">
                     {['CANVAS', 'MOODLE', 'OKTA', 'AZURE'].map(l => (
-                        <div key={l} className="px-5 py-2.5 rf-glass border-rf-border-glass text-[11px] font-black text-rf-text-muted uppercase tracking-[0.2em]">{l}</div>
+                        <div key={l} className="badge badge-neutral">{l}</div>
                     ))}
                 </div>
             </div>
             
             <div className="w-full flex justify-center lg:justify-end">
-                <button className="rf-btn rf-btn-primary px-16 py-6 !rounded-[24px] text-sm font-black uppercase tracking-[0.2em] shadow-rf-btn-primary group">
-                    Architect Solution <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform ml-4" />
+                <button className="btn btn-primary px-10 py-4 shadow-sm text-base group">
+                    Architect Solution <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </button>
             </div>
          </div>

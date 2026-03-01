@@ -4,17 +4,14 @@ import API_URL from '../../apiConfig';
 import { 
   ChevronLeft, 
   User, 
-  Calendar, 
-  Activity, 
-  Lock, 
-  Globe, 
-  AlertCircle,
   Database,
-  Clock,
   Search,
-  FileText
+  FileText,
+  Activity,
+  Lock,
+  AlertCircle,
+  Globe
 } from 'lucide-react';
-
 
 const AuditLogs = () => {
     const navigate = useNavigate();
@@ -56,88 +53,90 @@ const AuditLogs = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-rf-canvas flex items-center justify-center rf-animate-bloom">
-                <div className="w-10 h-10 border-3 border-rf-accent border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-rf-canvas pt-24 pb-12 px-4 sm:px-6 lg:px-8 rf-animate-bloom">
+        <div className="min-h-screen bg-background text-text-primary pt-24 pb-12 px-6 sm:px-8">
             <div className="max-w-4xl mx-auto">
 
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-4">
-                    <button className="p-2 rf-btn rf-btn-secondary !rounded-lg" onClick={() => navigate('/admin/dashboard')}>
+                    <button className="btn btn-secondary px-3 py-2" onClick={() => navigate('/admin/dashboard')}>
                         <ChevronLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-xl font-bold text-rf-text-pure">Audit Logs</h1>
-                        <p className="text-xs text-rf-text-dim">System activity and admin actions</p>
+                        <h1 className="heading-2 mb-1">Audit Logs</h1>
+                        <p className="text-body mt-0">System activity and admin actions</p>
                     </div>
                 </div>
                 
-                <div className="rf-card-glass px-3 py-2 flex items-center gap-2 border-rf-border-glass">
-                    <Search size={15} className="text-rf-text-muted" />
+                <div className="card px-3 py-2 flex items-center gap-2">
+                    <Search size={16} className="text-text-tertiary" />
                     <input 
                         placeholder="Search logs..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-transparent border-none outline-none text-sm text-rf-text-pure placeholder:text-rf-text-muted w-44"
+                        className="bg-transparent border-none outline-none text-sm text-text-primary placeholder:text-text-tertiary w-44"
                     />
                 </div>
             </header>
 
             {/* Logs List */}
-            <div className="space-y-2">
-                {filteredLogs.map((log, idx) => (
-                    <div 
-                        key={idx} 
-                        className="rf-card-glass p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 hover:border-rf-accent/20 transition-all"
-                    >
-                        {/* Timestamp */}
-                        <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-0 min-w-[70px] shrink-0">
-                            <span className="text-sm font-bold text-rf-text-pure">
-                                {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className="text-[10px] text-rf-text-muted">
-                                {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                            </span>
-                        </div>
-
-                        <div className="hidden sm:block w-px h-8 bg-rf-border-glass" />
-
-                        {/* Content */}
-                        <div className="flex-1 flex items-center gap-4">
-                            <div className="p-2 bg-rf-accent/10 border border-rf-accent/20 rounded-lg text-rf-accent shrink-0">
-                                {getActionIcon(log.action)}
+            <div className="card overflow-hidden">
+                <div className="divide-y divide-border bg-surface">
+                    {filteredLogs.map((log, idx) => (
+                        <div 
+                            key={idx} 
+                            className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 hover:bg-panel/40 transition-colors"
+                        >
+                            {/* Timestamp */}
+                            <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1 min-w-[70px] shrink-0">
+                                <span className="text-sm font-semibold text-text-primary">
+                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <span className="text-xs text-text-secondary">
+                                    {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                </span>
                             </div>
-                            <div>
-                                <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                                    <span className="text-sm font-semibold text-rf-text-pure">{log.userId?.name || 'System'}</span>
-                                    <span className="px-2 py-0.5 bg-rf-accent/10 text-rf-accent border border-rf-accent/20 rounded text-[10px] font-semibold">
-                                        {log.action.replace(/_/g, ' ')}
-                                    </span>
+
+                            <div className="hidden sm:block w-px h-10 bg-border" />
+
+                            {/* Content */}
+                            <div className="flex-1 flex items-center gap-4">
+                                <div className="p-2.5 bg-primary/10 rounded-lg text-primary shrink-0">
+                                    {getActionIcon(log.action)}
                                 </div>
-                                <div className="flex items-center gap-3 text-[11px] text-rf-text-muted">
-                                    {log.resource && (
-                                        <span className="flex items-center gap-1"><Database size={10} /> {log.resource}</span>
-                                    )}
-                                    {log.ipAddress && (
-                                        <span className="flex items-center gap-1"><Globe size={10} /> {log.ipAddress}</span>
-                                    )}
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <span className="text-sm font-semibold text-text-primary truncate">{log.userId?.name || 'System'}</span>
+                                        <span className="badge badge-neutral">
+                                            {log.action.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-xs text-text-secondary">
+                                        {log.resource && (
+                                            <span className="flex items-center gap-1.5"><Database size={12} /> <span className="truncate max-w-[120px]">{log.resource}</span></span>
+                                        )}
+                                        {log.ipAddress && (
+                                            <span className="flex items-center gap-1.5"><Globe size={12} /> {log.ipAddress}</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
 
                 {filteredLogs.length === 0 && (
-                    <div className="py-20 flex flex-col items-center justify-center text-center">
-                        <FileText size={36} className="text-rf-text-muted mb-3 opacity-30" />
-                        <h3 className="text-base font-bold text-rf-text-pure mb-1">No Logs Found</h3>
-                        <p className="text-sm text-rf-text-dim">
+                    <div className="py-20 flex flex-col items-center justify-center text-center bg-surface">
+                        <FileText size={36} className="text-text-tertiary mb-4 opacity-50" />
+                        <h3 className="text-sm font-semibold text-text-primary mb-1">No Logs Found</h3>
+                        <p className="text-sm text-text-secondary">
                             {searchQuery ? 'No logs match your search.' : 'No activity has been recorded yet.'}
                         </p>
                     </div>

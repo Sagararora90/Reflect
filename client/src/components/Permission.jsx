@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Monitor, Mic, CheckCircle2, XCircle, Shield, ArrowRight, Video } from 'lucide-react';
 import { useExam } from '../context/ExamContext';
 
-
 const Permission = () => {
   const navigate = useNavigate();
   const { dispatch } = useExam();
@@ -27,7 +26,7 @@ const Permission = () => {
       setPermissions(prev => ({ ...prev, webcam: true, mic: true }));
       setError('');
     } catch (err) {
-      setError('Camera/microphone access denied. Please allow permissions in your browser.');
+      setError('Camera/microphone access denied. Please allow permissions in your browser settings.');
       console.error(err);
     }
   };
@@ -48,95 +47,97 @@ const Permission = () => {
       try {
         await document.documentElement.requestFullscreen();
       } catch (err) {
-        setError('Full screen is required to continue.');
+        setError('Full screen is required to continue. Please click the button again.');
         return;
       }
       navigate('/exam');
     } else {
-      setError('Please grant all permissions before continuing.');
+      setError('Please grant all required permissions before continuing.');
     }
   };
 
     return (
-        <div className="min-h-screen bg-rf-canvas flex items-center justify-center px-4 py-20 rf-animate-bloom">
-            <div className="max-w-2xl w-full">
-                <div className="rf-card-glass overflow-hidden">
+        <div className="min-h-screen bg-background flex items-center justify-center px-6 py-20">
+            <div className="max-w-3xl w-full">
+                <div className="card overflow-hidden shadow-xl shadow-black/5 border-border/80">
                     {/* Header */}
-                    <div className="bg-rf-panel/20 p-6 md:p-8 border-b border-rf-border-glass">
-                        <div className="flex items-center gap-4 mb-3">
-                            <div className="w-11 h-11 rf-glass rounded-xl flex items-center justify-center border-rf-border-glass text-rf-accent shrink-0">
-                                <Shield size={22} />
+                    <div className="bg-surface p-6 md:p-8 border-b border-border">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-border shadow-sm text-primary shrink-0">
+                                <Shield size={24} />
                             </div>
                             <div>
-                                <p className="text-[11px] font-semibold text-rf-text-muted uppercase tracking-wider mb-0.5">Step 2 of 3</p>
-                                <h1 className="text-xl font-bold text-rf-text-pure">Grant Permissions</h1>
+                                <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1">Step 2 of 3</p>
+                                <h1 className="heading-2">System Permissions</h1>
                             </div>
                         </div>
-                        <p className="text-sm text-rf-text-dim leading-relaxed">
-                            Allow camera, microphone, and screen sharing to start the exam. When sharing your screen, select <span className="text-rf-text-pure font-semibold">Entire Screen</span>.
+                        <p className="text-body max-w-xl">
+                            Allow camera, microphone, and screen sharing to initiate the exam container. When prompted for screen share, you must select <span className="text-text-primary font-bold">Entire Screen</span>.
                         </p>
                     </div>
 
                     {/* Permissions & Preview */}
-                    <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6">
-                        <div className="flex flex-col gap-3">
+                    <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8">
+                        <div className="flex flex-col gap-4">
                             <PermissionItem 
-                                icon={<Camera size={18} />} 
-                                label="Camera" 
+                                icon={<Camera size={20} />} 
+                                label="Camera Access" 
                                 status={permissions.webcam} 
                                 onAction={requestWebcam} 
                             />
                             <PermissionItem 
-                                icon={<Mic size={18} />} 
-                                label="Microphone" 
+                                icon={<Mic size={20} />} 
+                                label="Microphone Access" 
                                 status={permissions.mic} 
                                 onAction={requestWebcam}
                                 waiting={!permissions.webcam}
                             />
                             <PermissionItem 
-                                icon={<Monitor size={18} />} 
-                                label="Screen Share" 
+                                icon={<Monitor size={20} />} 
+                                label="Screen Capture" 
                                 status={permissions.screen} 
                                 onAction={requestScreen} 
                             />
                             
                             {error && (
-                                <div className="flex items-center gap-3 bg-rf-danger/5 border border-rf-danger/10 rounded-lg p-3 text-rf-danger text-sm font-medium mt-1">
-                                    <XCircle size={16} className="shrink-0" />
+                                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4 text-status-danger text-sm font-medium mt-2">
+                                    <XCircle size={18} className="shrink-0 mt-0.5" />
                                     <span>{error}</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Camera Preview */}
-                        <div className="space-y-2">
-                            <div className="aspect-[3/4] bg-rf-canvas rounded-xl border border-rf-border-glass overflow-hidden relative flex items-center justify-center">
+                        <div className="flex flex-col gap-3">
+                            <div className="aspect-[4/3] bg-panel rounded-xl border border-border shadow-inner overflow-hidden relative flex items-center justify-center w-full">
                                 <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
                                 {!permissions.webcam && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-rf-canvas/80 backdrop-blur-sm">
-                                        <Video size={20} className="text-rf-text-muted opacity-40" />
-                                        <span className="text-[10px] font-semibold text-rf-text-muted">Camera Off</span>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-panel border border-border">
+                                        <div className="p-3 bg-white rounded-full border border-border shadow-sm">
+                                            <Video size={24} className="text-text-tertiary" />
+                                        </div>
+                                        <span className="text-xs font-semibold text-text-secondary">Camera Inactive</span>
                                     </div>
                                 )}
                                 {permissions.webcam && (
-                                    <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-rf-success/90 text-white rounded-full">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                        <span className="text-[9px] font-bold">LIVE</span>
+                                    <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 bg-status-success/90 backdrop-blur-md text-white rounded-md border border-white/20 shadow-sm">
+                                        <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                        <span className="text-[10px] uppercase font-bold tracking-wider">Live</span>
                                     </div>
                                 )}
                             </div>
-                            <p className="text-[10px] text-center text-rf-text-muted">Camera Preview</p>
+                            <p className="text-xs text-center font-medium text-text-tertiary uppercase tracking-wider">Feed Preview</p>
                         </div>
                     </div>
 
                     {/* Start Button */}
-                    <div className="px-6 md:px-8 pb-6 md:pb-8">
+                    <div className="px-6 md:px-8 pb-6 md:pb-8 pt-4 border-t border-border bg-surface">
                         <button 
-                            className="rf-btn rf-btn-primary w-full py-3.5 !rounded-xl text-sm font-bold group disabled:opacity-30 transition-all" 
+                            className="btn btn-primary w-full py-4 text-base group disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md" 
                             disabled={!permissions.webcam || !permissions.mic || !permissions.screen}
                             onClick={handleProceed}
                         >
-                            Start Exam <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform ml-1" />
+                            Initialize Environment <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform ml-2" />
                         </button>
                     </div>
                 </div>
@@ -145,28 +146,27 @@ const Permission = () => {
     );
 };
 
-
 const PermissionItem = ({ icon, label, status, onAction, waiting }) => (
-    <div className={`p-4 rounded-xl border flex items-center justify-between transition-all duration-300 ${status ? 'bg-rf-success/5 border-rf-success/20' : 'bg-rf-surface border-rf-border-glass hover:border-rf-accent/30'}`}>
-        <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg border ${status ? 'bg-rf-success/10 border-rf-success/20 text-rf-success' : 'rf-glass text-rf-accent border-rf-border-glass'}`}>
+    <div className={`p-4 rounded-xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 ${status ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-border hover:border-text-tertiary'}`}>
+        <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${status ? 'bg-white text-status-success border-green-200' : 'bg-panel text-text-secondary border-border'}`}>
                 {icon}
             </div>
-            <span className={`text-sm font-semibold ${status ? 'text-rf-success' : 'text-rf-text-dim'}`}>{label}</span>
+            <span className={`text-sm font-semibold ${status ? 'text-text-primary' : 'text-text-secondary'}`}>{label}</span>
         </div>
         
-        <div>
+        <div className="flex sm:justify-end">
             {status ? (
-                <div className="flex items-center gap-2 text-rf-success">
-                    <span className="text-xs font-bold">Granted</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-green-200 rounded-md text-status-success shadow-sm">
                     <CheckCircle2 size={16} />
+                    <span className="text-xs font-bold uppercase tracking-wider">Granted</span>
                 </div>
             ) : waiting ? (
-                <span className="text-xs text-rf-text-muted">Waiting...</span>
+                <span className="text-sm font-medium text-text-tertiary px-2 py-1.5">Waiting...</span>
             ) : (
                 <button 
                     onClick={onAction}
-                    className="rf-btn rf-btn-secondary !px-4 !py-1.5 !rounded-lg text-xs font-semibold"
+                    className="btn btn-secondary py-1.5 px-4 text-sm w-full sm:w-auto"
                 >
                     Allow
                 </button>
@@ -174,6 +174,5 @@ const PermissionItem = ({ icon, label, status, onAction, waiting }) => (
         </div>
     </div>
 );
-
 
 export default Permission;
